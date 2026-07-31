@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Local multi-agent orchestration scripts (machine-specific, not product code)
+.workflow-*.mjs
+
+# secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# spike output may contain real upstream traffic
+spikes/*/captures/
+spikes/*/out/
+
+.DS_Store
+*.log

@@ -1,0 +1,85 @@
+# Next.js admin dashboard on 127.0.0.1:3001 (PLAN.md §15, §18).
+#
+# NOT VERIFIED: no systemd available where this was authored.
+
+[Unit]
+Description=Bosanda admin dashboard (Next.js)
+Documentation=file:/opt/bosanda/current/docs/operations.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+# Restart-rate cap. MUST live in [Unit], not [Service]: systemd moved these
+# keys and silently ignores unknown keys in [Service], which would leave the
+# service hot-looping forever on a permanent fault (bad env file, port taken).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=bosanda
+Group=bosanda
+WorkingDirectory=/opt/bosanda/current/apps/admin
+
+# The admin app CAN reveal customer API keys (§12 eye toggle) and manage provider
+# accounts, so this env file is the one that carries API_KEY_ENCRYPTION_KEY.
+# It is the most sensitive env file on the box after the gateway's.
+EnvironmentFile=/etc/bosanda/admin.env
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=HOSTNAME=127.0.0.1
+
+ExecStart=/usr/bin/env node ./node_modules/.bin/next start
+
+KillSignal=SIGTERM
+TimeoutStopSec=30
+KillMode=mixed
+
+Restart=always
+RestartSec=5s
+SuccessExitStatus=0 SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bosanda-admin
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/bosanda/current/apps/admin/.next/cache
+
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+PrivateDevices=true
+
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+# V8 JIT requires W|X. Do not set true.
+MemoryDenyWriteExecute=false
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @obsolete @resources @mount @debug @swap @reboot @module @raw-io @cpu-emulation
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+
+LimitNOFILE=4096
+# Few operators, small footprint.
+MemoryHigh=256M
+MemoryMax=384M
+TasksMax=128
+
+OOMPolicy=stop
+OOMScoreAdjust=250
+
+[Install]
+WantedBy=multi-user.target

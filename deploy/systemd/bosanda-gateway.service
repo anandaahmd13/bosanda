@@ -1,0 +1,183 @@
+# Fastify gateway — the only Bosanda process exposed to customer traffic.
+# PLAN.md §18 ("Systemd requirements"), §16 ("Secrets", "Network").
+#
+# Install: /etc/systemd/system/bosanda-gateway.service
+# Then:    systemctl daemon-reload && systemctl enable --now bosanda-gateway
+#
+# NOT VERIFIED: systemd is unavailable on the machine where this was authored, so
+# `systemd-analyze verify` has not been run. The owner must run it on the VPS
+# (see docs/runbook.md) before trusting the hardening directives.
+
+[Unit]
+Description=Bosanda API gateway (OpenAI/Anthropic compatible)
+Documentation=https://github.com/bosanda/bosanda
+After=network-online.target postgresql.service
+Wants=network-online.target
+# Not Requires=: if PostgreSQL is briefly down the gateway should stay up and
+# return a sanitized 503 rather than being stopped by systemd. It reconnects.
+After=postgresql.service
+
+# Restart-rate cap. MUST live in [Unit], not [Service]: systemd moved these
+# keys and silently ignores unknown keys in [Service], which would leave the
+# service hot-looping forever on a permanent fault (bad env file, port taken).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+
+# --- Identity (§18: dedicated non-root users) ------------------------------
+# Created by scripts/provision.sh. No login shell, no home directory of its own
+# beyond the app dir; cannot be used to log in even if a password were set.
+User=bosanda
+Group=bosanda
+
+WorkingDirectory=/opt/bosanda/current
+
+# --- Configuration (§16: root-readable environment files, never committed) --
+# The file is owned root:bosanda 0640 — root writes it, the service reads it,
+# nobody else can see the secrets. systemd reads it as root BEFORE dropping to
+# User=, which is why the service user does not need write access.
+# `-` prefix is deliberately ABSENT: a missing env file must fail loudly rather
+# than start a gateway with no database URL and no encryption keys.
+EnvironmentFile=/etc/bosanda/gateway.env
+
+# NODE_ENV is set here rather than in the env file so it cannot be
+# misconfigured per-host; the config layer validates it (packages/config).
+Environment=NODE_ENV=production
+
+# tsx runs the TypeScript entrypoint directly. This matches the repo layout
+# (no build/emit step for server code — tsconfig sets noEmit) and the
+# dev:gateway script. If a compiled dist/ is introduced later, change this to
+# `node dist/main.js` and drop the tsx dependency from the runtime path.
+ExecStart=/usr/bin/env node --enable-source-maps ./node_modules/.bin/tsx apps/gateway/src/main.ts
+
+# --- Graceful shutdown (in-flight streams must drain) ----------------------
+#
+# The expectation the gateway code must honour, in order:
+#   1. SIGTERM arrives.
+#   2. Stop accepting NEW connections (close the listener) and start failing the
+#      health check, so scripts/deploy.sh and any future load balancer see the
+#      instance leaving rotation.
+#   3. Let in-flight SSE streams RUN TO COMPLETION. A model turn can legitimately
+#      take minutes; cutting it mid-stream would bill the customer's quota for a
+#      truncated answer and, worse, is unrecoverable for the client (§10 says
+#      Bosanda does not cut text or a tool call in the middle).
+#   4. Settle usage to the quota ledger, then exit 0.
+#
+# TimeoutStopSec must therefore exceed UPSTREAM_HARD_TIMEOUT_MS (600000 = 600s)
+# plus settlement headroom, otherwise systemd SIGKILLs a legitimate long turn.
+# 660s = 600s hard timeout + 60s to settle ledger rows and close the pool.
+KillSignal=SIGTERM
+TimeoutStopSec=660
+# Send the signal to the main process only. Killing the whole cgroup up front
+# would defeat the drain.
+KillMode=mixed
+# Escalate to SIGKILL only after TimeoutStopSec. A wedged process still dies.
+FinalKillSignal=SIGKILL
+
+# --- Restart policy (§18: restart policies with backoff) -------------------
+Restart=always
+# Wait 5s between attempts rather than hot-looping on a config error.
+RestartSec=5s
+# Backoff window: more than 5 restarts in 60s means this is not transient
+# (bad env file, port taken, migration mismatch). Stop trying and leave the unit
+# failed so the operator sees it, instead of masking a real fault as a flap.
+# A clean SIGTERM exit during deploy is success, not a failure to restart from.
+SuccessExitStatus=0 SIGTERM
+
+# --- Logging (§17: journald, redacted at source) ---------------------------
+# stdout/stderr go to journald. The application logger (pino) already redacts
+# credentials, prompts, and tool payloads BEFORE the bytes leave the process —
+# journald is not a security boundary and must not be relied on as one.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bosanda-gateway
+
+# --- Hardening (§16, §18: read-only FS, explicit writable dirs) ------------
+
+# Cannot gain privileges via setuid/setgid binaries or file capabilities. This
+# also makes the whole no_new_privs subtree apply to any child process.
+NoNewPrivileges=true
+
+# /usr, /boot, /efi mounted read-only; /etc read-only too. The gateway has no
+# business writing outside its runtime dir.
+ProtectSystem=strict
+
+# /home, /root, /run/user are invisible. Nothing here needs them, and it means a
+# code-execution bug cannot read the operator's SSH keys or shell history.
+ProtectHome=true
+
+# Private /tmp and /var/tmp, destroyed on stop. Prevents a symlink/tmp-race
+# against another process and stops any accidental temp file persisting.
+PrivateTmp=true
+
+# ProtectSystem=strict makes everything read-only, so grant back exactly what is
+# needed and nothing else. RuntimeDirectory gives a 0750 /run/bosanda-gateway
+# for a unix socket or pid file, removed automatically on stop.
+RuntimeDirectory=bosanda-gateway
+RuntimeDirectoryMode=0750
+# Deliberately NO ReadWritePaths for the app directory: the gateway must not be
+# able to rewrite its own code. Uncomment ONLY with a specific justification.
+# ReadWritePaths=/var/lib/bosanda
+
+# Kernel and device protections. The gateway is a userspace HTTP process; it
+# needs none of this surface.
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+# No device nodes except /dev/null, /dev/zero, /dev/urandom (needed for crypto).
+PrivateDevices=true
+
+# Only the address families actually used: IPv4/IPv6 for HTTP and PostgreSQL,
+# UNIX for a local socket and for DNS resolution via nscd where present. No
+# AF_NETLINK (network reconfiguration), no AF_PACKET (raw sniffing).
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Refuse to load a kernel personality, refuse namespace creation, refuse SUID
+# file creation, and refuse making memory both writable and executable — the
+# last one is a meaningful JIT-spraying mitigation even for V8.
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+MemoryDenyWriteExecute=false
+# ^ MUST stay false: V8 JIT requires W|X pages. Setting true crashes Node at
+#   startup. Recorded explicitly so nobody "hardens" it later and breaks boot.
+
+# Drop every capability. A userspace process binding 4000 (>1024) needs none.
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Allow only the syscall groups a network service uses.
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @obsolete @resources @mount @debug @swap @reboot @module @raw-io @cpu-emulation
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+
+# --- Resource limits (§18) -------------------------------------------------
+# Many concurrent SSE streams each hold a client socket AND an upstream socket,
+# plus PostgreSQL connections. The default 1024 is too low.
+LimitNOFILE=65535
+
+# Hard memory ceiling so a runaway request cannot OOM PostgreSQL and take the
+# whole box down with it. MemoryMax kills; MemoryHigh throttles first, giving a
+# spike a chance to recover and showing up in metrics before anything dies.
+# TUNE THESE to the actual VPS: sized here for a 2 GB droplet.
+MemoryHigh=768M
+MemoryMax=1G
+# Leave CPU unthrottled: token streaming is IO-bound and CPU throttling would
+# show up directly as increased TTFB (§17).
+TasksMax=512
+
+# OOM policy: prefer killing this over PostgreSQL.
+OOMPolicy=stop
+OOMScoreAdjust=200
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,113 @@
+# Background worker — Pakasir reconciliation, order expiry, provider health
+# revalidation, key expiry sweeps (PLAN.md §13 "Reconciliation", §18).
+#
+# Install: /etc/systemd/system/bosanda-worker.service
+#
+# The worker takes NO inbound traffic. It is therefore hardened slightly further
+# than the gateway: it does not need a listening socket at all.
+#
+# NOT VERIFIED: `systemd-analyze verify` has not been run (no systemd available
+# where this was authored). Owner must verify on the VPS.
+
+[Unit]
+Description=Bosanda background worker (payments reconciliation, expiry sweeps)
+Documentation=https://github.com/bosanda/bosanda
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+# Restart-rate cap. MUST live in [Unit], not [Service]: systemd moved these
+# keys and silently ignores unknown keys in [Service], which would leave the
+# service hot-looping forever on a permanent fault (bad env file, port taken).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+
+User=bosanda
+Group=bosanda
+WorkingDirectory=/opt/bosanda/current
+
+# Separate env file from the gateway. The worker needs DATABASE_URL, the
+# encryption keyring, and the Pakasir credentials, but NOT the session secret —
+# splitting the files keeps least-privilege honest rather than aspirational.
+# See deploy/env/.env.example for which variable belongs where.
+EnvironmentFile=/etc/bosanda/worker.env
+Environment=NODE_ENV=production
+
+ExecStart=/usr/bin/env node --enable-source-maps ./node_modules/.bin/tsx apps/worker/src/main.ts
+
+# --- Graceful shutdown -----------------------------------------------------
+#
+# The worker's contract on SIGTERM:
+#   1. Stop claiming NEW jobs.
+#   2. Finish the job in hand. This matters most for order activation: the §13
+#      activation transaction (mark paid, consume stock, create/top-up key,
+#      append ledger rows) must either commit or roll back whole. It is
+#      idempotent on the provider event key, so a killed job is retried safely —
+#      but letting it commit is cheaper than reconciling it later.
+#   3. Close the pool and exit 0.
+#
+# 90s is ample: the longest worker job is a Pakasir status poll plus one
+# activation transaction, both of which are seconds. Much shorter than the
+# gateway because there are no long-lived streams here.
+KillSignal=SIGTERM
+TimeoutStopSec=90
+KillMode=mixed
+
+Restart=always
+RestartSec=10s
+SuccessExitStatus=0 SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bosanda-worker
+
+# --- Hardening (same rationale as the gateway; see that file for the "why") --
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RuntimeDirectory=bosanda-worker
+RuntimeDirectoryMode=0750
+
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+PrivateDevices=true
+
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+# Must stay false — V8 JIT needs W|X. See bosanda-gateway.service.
+MemoryDenyWriteExecute=false
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @obsolete @resources @mount @debug @swap @reboot @module @raw-io @cpu-emulation
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+
+# The worker holds few sockets: a small PostgreSQL pool and outbound HTTPS to
+# Pakasir. It does not need the gateway's 65535.
+LimitNOFILE=8192
+
+# Smaller footprint than the gateway; it processes one job at a time.
+MemoryHigh=256M
+MemoryMax=384M
+TasksMax=128
+
+OOMPolicy=stop
+OOMScoreAdjust=300
+
+[Install]
+WantedBy=multi-user.target

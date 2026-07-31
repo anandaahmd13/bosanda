@@ -1,0 +1,59 @@
+# Weekly restore drill (PLAN.md §18: "restoration is tested").
+#
+# The whole point: a backup nobody has restored is a hope, not a backup. This
+# unit restores the newest dump into a scratch database, runs sanity queries, and
+# drops it. If it fails, the alert fires on a Monday morning rather than during a
+# real outage.
+#
+# It intentionally does NOT touch the production database. scripts/restore.sh
+# refuses to target the live database unless explicitly forced (see that script).
+
+[Unit]
+Description=Bosanda backup restore drill (verify newest dump into scratch DB)
+Documentation=file:/opt/bosanda/current/docs/operations.md
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+
+User=bosanda-backup
+Group=bosanda-backup
+EnvironmentFile=/etc/bosanda/backup.env
+
+# --drill restores into a uniquely-named scratch database and drops it after
+# verification, so a drill can never overwrite production.
+ExecStart=/opt/bosanda/current/scripts/restore.sh --drill
+
+TimeoutStartSec=3600
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bosanda-restore-drill
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# Reads the dumps; writes only its own temp working copy inside PrivateTmp.
+ReadOnlyPaths=/var/backups/bosanda
+
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectProc=invisible
+
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+
+MemoryMax=768M
+Nice=15
+IOSchedulingClass=idle
+CPUSchedulingPolicy=batch

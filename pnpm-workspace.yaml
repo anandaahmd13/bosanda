@@ -1,0 +1,18 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "spikes/*"
+
+overrides:
+  postcss: 8.5.18
+  sharp: 0.35.0
+
+# pnpm 11 denies dependency build scripts by default; allow only what we need.
+allowBuilds:
+  esbuild: true
+  "@node-rs/argon2": true
+  # Next.js image optimization; needed for `next build` in apps/web and apps/admin.
+  sharp: true
+
+minimumReleaseAgeExclude:
+  - fastify@5.11.0

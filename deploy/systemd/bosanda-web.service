@@ -1,0 +1,94 @@
+# Next.js storefront on 127.0.0.1:3000 (PLAN.md §18: separate units for web,
+# admin, gateway, and worker).
+#
+# NOT VERIFIED: no systemd available where this was authored.
+
+[Unit]
+Description=Bosanda storefront (Next.js)
+Documentation=file:/opt/bosanda/current/docs/operations.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+# Restart-rate cap. MUST live in [Unit], not [Service]: systemd moved these
+# keys and silently ignores unknown keys in [Service], which would leave the
+# service hot-looping forever on a permanent fault (bad env file, port taken).
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=bosanda
+Group=bosanda
+WorkingDirectory=/opt/bosanda/current/apps/web
+
+# The storefront needs the session secret and database URL but NOT the provider
+# encryption key — it never decrypts Kiro credentials. Separate file, least
+# privilege (§16).
+EnvironmentFile=/etc/bosanda/web.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Bind to loopback only: nginx is the sole entry point, and a Next app listening
+# on 0.0.0.0 would bypass every header and rate limit in the vhost.
+Environment=HOSTNAME=127.0.0.1
+
+# `next start` serves the production build produced by scripts/deploy.sh.
+ExecStart=/usr/bin/env node ./node_modules/.bin/next start
+
+# Next finishes in-flight SSR quickly; no long-lived streams on this host.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+KillMode=mixed
+
+Restart=always
+RestartSec=5s
+SuccessExitStatus=0 SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bosanda-web
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+# Next writes its incremental cache under .next/cache at runtime (ISR, image
+# optimizer output). ProtectSystem=strict makes that read-only, so grant exactly
+# this one subtree — not the whole app directory, which would let the app rewrite
+# its own source.
+ReadWritePaths=/opt/bosanda/current/apps/web/.next/cache
+
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+PrivateDevices=true
+
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+# V8 JIT requires W|X. Do not set true.
+MemoryDenyWriteExecute=false
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @obsolete @resources @mount @debug @swap @reboot @module @raw-io @cpu-emulation
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+
+LimitNOFILE=8192
+MemoryHigh=384M
+MemoryMax=512M
+TasksMax=256
+
+OOMPolicy=stop
+OOMScoreAdjust=250
+
+[Install]
+WantedBy=multi-user.target

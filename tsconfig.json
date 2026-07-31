@@ -1,0 +1,31 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@bosanda/config": ["packages/config/src/index.ts"],
+      "@bosanda/database": ["packages/database/src/index.ts"],
+      "@bosanda/auth": ["packages/auth/src/index.ts"],
+      "@bosanda/api-keys": ["packages/api-keys/src/index.ts"],
+      "@bosanda/protocol": ["packages/protocol/src/index.ts"],
+      "@bosanda/openai": ["packages/openai/src/index.ts"],
+      "@bosanda/anthropic": ["packages/anthropic/src/index.ts"],
+      "@bosanda/provider-core": ["packages/provider-core/src/index.ts"],
+      "@bosanda/provider-kiro": ["packages/provider-kiro/src/index.ts"],
+      "@bosanda/metering": ["packages/metering/src/index.ts"],
+      "@bosanda/payments": ["packages/payments/src/index.ts"],
+      "@bosanda/observability": ["packages/observability/src/index.ts"],
+      "@bosanda/shared": ["packages/shared/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/test/**/*.ts",
+    "apps/gateway/src/**/*.ts",
+    "apps/worker/src/**/*.ts",
+    "spikes/*/src/**/*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "**/dist/**", "apps/web/**", "apps/admin/**"]
+}

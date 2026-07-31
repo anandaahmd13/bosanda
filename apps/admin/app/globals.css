@@ -1,0 +1,944 @@
+/*
+ * Bosanda admin — glass-on-dark-navy.
+ *
+ * Tokens are transcribed from DESIGN.md §1.4. Written by hand: DESIGN.md §6 is
+ * explicit that no Creative Tim source may be copied, so this file shares the
+ * token VALUES and nothing else.
+ *
+ * Accessibility notes are inline where a rule exists for a contrast or
+ * keyboard reason, so a later edit does not silently undo it.
+ */
+
+:root {
+  --bg-app: #030c1d;
+  --surface-grad: linear-gradient(
+    127.09deg,
+    rgba(6, 11, 40, 0.94) 19.41%,
+    rgba(10, 14, 35, 0.49) 76.65%
+  );
+  --nav-active-grad: linear-gradient(
+    126.97deg,
+    rgba(6, 11, 40, 0.74) 28.26%,
+    rgba(10, 14, 35, 0.71) 91.2%
+  );
+  --grad-primary: linear-gradient(310deg, #4318ff, #9f7aea);
+  --grad-info: linear-gradient(310deg, #0075ff, #21d4fd);
+  --divider: linear-gradient(to right, rgba(0, 117, 255, 0), #fff, rgba(255, 255, 255, 0));
+
+  --text-primary: #ffffff;
+  --text-secondary: #a0aec0;
+  --text-muted: #718096;
+
+  --success: #01b574;
+  --danger: #e31a1a;
+  --warning: #ffb547;
+  --info: #0075ff;
+
+  --radius-card: 20px;
+  --radius-control: 12px;
+  --blur-card: 120px;
+  --shadow-card: 0 20px 27px 0 rgba(0, 0, 0, 0.05);
+  --shadow-nav-active: 0 4px 7px -1px rgba(0, 0, 0, 0.11), 0 2px 4px -1px rgba(0, 0, 0, 0.07);
+
+  --sidebar-width: 250px;
+
+  /*
+   * Status colors at full saturation on #030c1d:
+   *   --success #01b574 ≈ 5.4:1, --warning #ffb547 ≈ 10.6:1 — both pass AA.
+   *   --danger  #e31a1a ≈ 4.1:1 and --info #0075ff ≈ 3.4:1 DO NOT pass AA for
+   *   body text, so they are used for borders, chip backgrounds, and large text
+   *   only. Text-on-dark uses the lightened pair below.
+   */
+  --danger-text: #ff8a8a;
+  --info-text: #6cc0ff;
+
+  --surface-border: rgba(255, 255, 255, 0.12);
+  --field-bg: rgba(3, 12, 29, 0.6);
+  --focus-ring: #21d4fd;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Anchors land below the sticky topbar rather than under it. */
+  scroll-padding-top: 88px;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-app);
+  /*
+   * DESIGN.md §5 requires re-creating body-background.png rather than
+   * hotlinking the demo asset. No owned raster exists, so the nebula is
+   * approximated with pure CSS radial gradients — no network request, and
+   * nothing to license.
+   */
+  background-image:
+    radial-gradient(ellipse 80% 55% at 18% -10%, rgba(67, 24, 255, 0.28), transparent 60%),
+    radial-gradient(ellipse 70% 50% at 88% 4%, rgba(0, 117, 255, 0.2), transparent 62%),
+    radial-gradient(ellipse 90% 60% at 50% 105%, rgba(159, 122, 234, 0.12), transparent 65%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  color: var(--text-primary);
+  font-family: var(--font-jakarta), Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+h1 {
+  font-size: 24px;
+}
+h2 {
+  font-size: 20px;
+}
+h3 {
+  font-size: 16px;
+}
+
+p {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+}
+
+a {
+  color: var(--info-text);
+}
+a:hover {
+  color: #a5d8ff;
+}
+
+/*
+ * Visible focus everywhere, on every interactive element, no exceptions.
+ * :focus-visible keeps it off mouse clicks but always on for keyboard.
+ */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip link: offscreen until focused. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 12px 18px;
+  background: #060b28;
+  border: 1px solid var(--focus-ring);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 16px;
+  top: 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------- layout */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  gap: 24px;
+  padding: 16px;
+  align-items: start;
+}
+
+.sidebar {
+  position: sticky;
+  top: 16px;
+  /* Own scroll when the nav outgrows the viewport. */
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--surface-grad);
+  backdrop-filter: blur(var(--blur-card));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 22px 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background-image: var(--grad-primary);
+  flex: 0 0 auto;
+}
+.brand-sub {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.hr {
+  height: 1px;
+  border: 0;
+  margin: 12px 0;
+  background-image: var(--divider);
+  opacity: 0.35;
+}
+
+.nav-group-label {
+  padding: 14px 8px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+.nav-item:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+.nav-item[aria-current="page"] {
+  background-image: var(--nav-active-grad);
+  box-shadow: var(--shadow-nav-active);
+  color: var(--text-primary);
+}
+.nav-chip {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--surface-border);
+  font-size: 13px;
+  line-height: 1;
+}
+.nav-item[aria-current="page"] .nav-chip {
+  background-image: var(--grad-info);
+  border-color: transparent;
+}
+
+.content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.topbar-titles {
+  min-width: 0;
+}
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Hamburger: only shown when the sidebar collapses. */
+.nav-toggle {
+  display: none;
+}
+
+/* -------------------------------------------------------------------- cards */
+
+.card {
+  background: var(--surface-grad);
+  backdrop-filter: blur(var(--blur-card));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+  min-width: 0;
+}
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+.card-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+}
+.grid-kpi {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+.grid-cards {
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+
+/* KPI tile: eyebrow → value → delta, with a gradient icon chip. */
+.kpi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+.kpi-delta {
+  font-size: 12px;
+  font-weight: 700;
+}
+.kpi-delta.up {
+  color: var(--success);
+}
+.kpi-delta.down {
+  color: var(--danger-text);
+}
+.kpi-chip {
+  width: 45px;
+  height: 45px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-control);
+  background-image: var(--grad-info);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+.kpi-chip.primary {
+  background-image: var(--grad-primary);
+}
+
+/* ------------------------------------------------------------------- chips */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+/*
+ * Chip text uses the lightened variants; the saturated hue stays on the border
+ * and the 18%-alpha fill. That keeps AA on the dark navy while preserving the
+ * "read status by color" requirement of DESIGN.md §4.3.
+ */
+.chip-success {
+  color: var(--success);
+  border-color: rgba(1, 181, 116, 0.5);
+  background: rgba(1, 181, 116, 0.16);
+}
+.chip-warning {
+  color: var(--warning);
+  border-color: rgba(255, 181, 71, 0.5);
+  background: rgba(255, 181, 71, 0.16);
+}
+.chip-danger {
+  color: var(--danger-text);
+  border-color: rgba(227, 26, 26, 0.6);
+  background: rgba(227, 26, 26, 0.18);
+}
+.chip-info {
+  color: var(--info-text);
+  border-color: rgba(0, 117, 255, 0.55);
+  background: rgba(0, 117, 255, 0.18);
+}
+.chip-neutral {
+  color: var(--text-secondary);
+  border-color: var(--surface-border);
+  background: rgba(255, 255, 255, 0.06);
+}
+.chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background-image: var(--grad-primary);
+}
+.btn-info {
+  background-image: var(--grad-info);
+}
+.btn-ghost {
+  border-color: #ffffff;
+}
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+/* Destructive: outlined, never a filled red slab, so it reads as "stop". */
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger-text);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(227, 26, 26, 0.14);
+}
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* GET filter bar on the list pages. `flex-end` so a labelled input and a bare
+   button share a baseline: the label sits above the control, and without this
+   the button would centre against the label+input pair instead of the input. */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.filter-row .field {
+  margin: 0;
+  min-width: 180px;
+}
+
+/* ------------------------------------------------------------------- forms */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.field-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--field-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
+  border-color: var(--focus-ring);
+}
+.textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+.form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.form-row > .field {
+  flex: 1 1 180px;
+}
+.form-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+/* A write-only credential field is visually marked as one-way. */
+.field-writeonly .input {
+  border-color: rgba(255, 181, 71, 0.45);
+}
+
+fieldset {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-control);
+  padding: 14px;
+  margin: 0;
+  min-width: 0;
+}
+legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------------ tables */
+
+.table-scroll {
+  overflow-x: auto;
+  /*
+   * A horizontally scrollable region must be reachable by keyboard; tabindex=0
+   * is set on this element in the markup, hence the focus style here.
+   */
+  border-radius: var(--radius-control);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table caption {
+  text-align: left;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-bottom: 10px;
+}
+.table th,
+.table td {
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.table thead th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.table tbody th[scope="row"] {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.empty {
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/*
+ * Quota bar in the key table. Decorative: the markup sets aria-hidden and puts
+ * the real figures in text alongside, so this carries no information of its own.
+ * --warning rather than --danger for a nearly-spent key, because a key running
+ * low is expected behaviour and not an error state.
+ */
+.meter {
+  height: 4px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  background: var(--success);
+}
+.meter-warn {
+  background: var(--warning);
+}
+
+/* ------------------------------------------------------------------ banners */
+
+.banner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-grad);
+  backdrop-filter: blur(var(--blur-card));
+}
+.banner-strong {
+  border-width: 2px;
+}
+.banner-danger {
+  border-color: var(--danger);
+  background: rgba(227, 26, 26, 0.1);
+}
+.banner-warning {
+  border-color: var(--warning);
+  background: rgba(255, 181, 71, 0.1);
+}
+.banner-success {
+  border-color: rgba(1, 181, 116, 0.6);
+  background: rgba(1, 181, 116, 0.08);
+}
+.banner-info {
+  border-color: rgba(0, 117, 255, 0.6);
+  background: rgba(0, 117, 255, 0.08);
+}
+.banner-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.banner-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.banner-icon {
+  font-size: 20px;
+  line-height: 1.2;
+  flex: 0 0 auto;
+}
+
+/* Live regions must not collapse to zero height, or SRs may miss the update. */
+.status-live {
+  min-height: 20px;
+}
+
+/* ------------------------------------------------------------------ dialogs */
+
+/*
+ * Native <dialog> gives Esc-to-close, focus trapping, and inert background for
+ * free — no JS focus-trap to get wrong. Focus restore is handled explicitly in
+ * ConfirmDialog because Safari does not restore reliably.
+ */
+dialog.modal {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  background: #060b28;
+  color: var(--text-primary);
+  padding: 0;
+  width: min(560px, calc(100vw - 32px));
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55);
+}
+dialog.modal::backdrop {
+  background: rgba(3, 12, 29, 0.72);
+  backdrop-filter: blur(2px);
+}
+.modal-inner {
+  padding: 22px;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.modal-target {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--surface-border);
+  margin-bottom: 14px;
+  overflow-wrap: anywhere;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------- data source */
+
+.source-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.source-fixture {
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  background: rgba(255, 181, 71, 0.14);
+}
+.source-live {
+  color: var(--success);
+  border: 1px solid rgba(1, 181, 116, 0.6);
+  background: rgba(1, 181, 116, 0.12);
+}
+
+/* ------------------------------------------------------------------- charts */
+
+.chart-wrap {
+  width: 100%;
+  height: 260px;
+}
+/* recharts injects focusable wrappers that show a stray outline on click. */
+.chart-wrap .recharts-wrapper:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.legend-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+
+/* --------------------------------------------------------------- login page */
+
+.auth-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-card {
+  width: min(400px, 100%);
+}
+
+/* ------------------------------------------------------------------ details */
+
+.dl {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+.dl dt {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 12px;
+}
+.dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------- responsive */
+
+/*
+ * The 250px sidebar collapses below 960px into a <details> disclosure so the
+ * nav stays keyboard-reachable and needs no JS.
+ */
+@media (max-width: 960px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .sidebar {
+    position: static;
+    max-height: none;
+  }
+  .nav-collapse > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 10px 12px;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--surface-border);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-collapse > summary::-webkit-details-marker {
+    display: none;
+  }
+  .nav-collapse[open] > summary {
+    margin-bottom: 10px;
+  }
+}
+
+@media (min-width: 961px) {
+  /* Above the breakpoint the disclosure is inert: always open, no summary. */
+  .nav-collapse > summary {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  body {
+    font-size: 13px;
+  }
+  .card,
+  .sidebar {
+    padding: 16px;
+  }
+  .grid-kpi {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * Windows High Contrast / forced-colors: the whole aesthetic is gradients,
+ * which are dropped there. Restore explicit borders so structure survives.
+ */
+@media (forced-colors: active) {
+  .card,
+  .sidebar,
+  .banner,
+  dialog.modal {
+    border: 1px solid CanvasText;
+  }
+  .chip {
+    border: 1px solid CanvasText;
+  }
+}
+
+@media print {
+  .sidebar,
+  .topbar-actions {
+    display: none;
+  }
+}

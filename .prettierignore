@@ -1,0 +1,16 @@
+# Generated / vendored — never hand-formatted.
+#
+# pnpm-lock.yaml is emitted by pnpm with single-quoted keys. Letting Prettier
+# rewrite it to double quotes makes `format:check` (CI step 1) fail again the
+# next time anyone runs `pnpm install`, because pnpm regenerates its own style.
+pnpm-lock.yaml
+
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Binary assets.
+docs/design-references/

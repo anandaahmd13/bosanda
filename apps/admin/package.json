@@ -1,0 +1,12 @@
+{
+  "name": "@bosanda/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

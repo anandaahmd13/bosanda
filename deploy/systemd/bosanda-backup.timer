@@ -1,0 +1,29 @@
+# Schedule for bosanda-backup.service (PLAN.md §18).
+#
+# Install: /etc/systemd/system/bosanda-backup.timer
+# Then:    systemctl daemon-reload && systemctl enable --now bosanda-backup.timer
+# Verify:  systemctl list-timers bosanda-\*
+
+[Unit]
+Description=Daily Bosanda PostgreSQL backup
+Documentation=file:/opt/bosanda/current/docs/operations.md
+
+[Timer]
+# 03:15 local time daily. Chosen because Bosanda's customers are mostly
+# Indonesian (WIB), so early morning is the traffic trough, and :15 rather than
+# :00 avoids contending with every other cron job on the host.
+OnCalendar=*-*-* 03:15:00
+
+# If the VPS was off or rebooting at 03:15, run as soon as it comes back rather
+# than skipping a day. Without this a reboot window silently costs a backup.
+Persistent=true
+
+# Spread the start by up to 10 minutes. Minor here (single host) but it keeps the
+# load profile smooth if a second service is ever added to the same box.
+RandomizedDelaySec=600
+
+# Do not let a slow backup and the next scheduled one overlap.
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target

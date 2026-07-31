@@ -1,0 +1,78 @@
+# Continuous integration (PLAN.md §19, §20 M4).
+#
+# One job, six checks, in ascending order of cost: format, lint, typecheck, test,
+# application builds, then the production dependency audit. The order matters —
+# a formatting error should fail before the more expensive release checks.
+#
+# Deliberately NOT here: secrets, deployment, database services, and anything
+# needing real Kiro credentials. Deployment is scripts/deploy.sh run by the owner
+# on the VPS. The §19 items that require a live PostgreSQL or real upstream
+# credentials cannot run in CI at all — see docs/testing.md for which ones and
+# how the owner runs them.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Manual trigger, useful for re-running against a changed base.
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref. Saves minutes on a busy branch without
+# affecting main, where each push gets its own concurrency group.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only token. This workflow never pushes, comments, or publishes.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm must be installed before setup-node, so setup-node's pnpm cache
+      # backend can find the binary.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # Matches the engines field in package.json (>=22.11.0). Pinned to a
+          # major so a Node release cannot break CI without a deliberate bump.
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile fails if pnpm-lock.yaml does not match package.json,
+      # which is exactly what we want in CI: it catches a dependency added
+      # without committing the lockfile, and guarantees every check below ran
+      # against the same tree a deploy would install.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm run format:check
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build apps
+        run: pnpm run build:apps
+
+      - name: Audit production dependencies
+        run: pnpm run audit:prod

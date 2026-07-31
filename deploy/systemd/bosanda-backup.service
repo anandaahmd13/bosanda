@@ -1,0 +1,76 @@
+# PostgreSQL backup, invoked by bosanda-backup.timer (PLAN.md §18: "PostgreSQL
+# backups are encrypted and restoration is tested").
+#
+# Type=oneshot: this is a job, not a daemon. The timer owns the schedule; keeping
+# the schedule out of the service means `systemctl start bosanda-backup` runs an
+# ad-hoc backup on demand without disturbing the cadence.
+#
+# A timer is the cleaner shape than cron here: journald captures the output with
+# the same redaction and retention as the services, Persistent=true survives a
+# reboot window, and the unit inherits the same hardening vocabulary.
+
+[Unit]
+Description=Bosanda encrypted PostgreSQL backup
+Documentation=file:/opt/bosanda/current/docs/operations.md
+After=postgresql.service
+# Do not run a backup if PostgreSQL is not up; the timer will retry next cycle.
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+
+# Runs as the backup user, NOT as bosanda: the backup needs read access to the
+# GPG public key and write access to the backup directory, and the app user
+# should not be able to read or delete backups. Separation means a compromise of
+# the gateway does not let an attacker destroy the backups (§16).
+User=bosanda-backup
+Group=bosanda-backup
+
+# Contains PGHOST/PGDATABASE/PGUSER/PGPASSWORD and BOSANDA_BACKUP_* settings.
+# root:bosanda-backup 0640.
+EnvironmentFile=/etc/bosanda/backup.env
+
+ExecStart=/opt/bosanda/current/scripts/backup.sh
+
+# A backup that hangs must not hold the timer forever.
+TimeoutStartSec=3600
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bosanda-backup
+
+# --- Hardening -------------------------------------------------------------
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+# The one path this unit must write. Everything else stays read-only.
+ReadWritePaths=/var/backups/bosanda
+
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectProc=invisible
+
+# AF_UNIX for the local PostgreSQL socket; AF_INET/6 in case DATABASE_URL points
+# at a TCP host.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+SystemCallArchitectures=native
+
+# pg_dump plus gzip plus gpg on a small database. Generous but bounded.
+MemoryMax=512M
+
+# Backups are the definition of "can wait": never let this starve the gateway.
+Nice=10
+IOSchedulingClass=idle
+CPUSchedulingPolicy=batch

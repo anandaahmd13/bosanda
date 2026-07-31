@@ -1,0 +1,22 @@
+# Weekly cadence for the restore drill (PLAN.md §18).
+#
+# Weekly, not daily: a drill costs real IO and the failure modes it catches
+# (corrupt dump, missing extension, schema drift, wrong pg_dump version) do not
+# appear day to day. docs/operations.md records the drill cadence and what to do
+# when it fails.
+
+[Unit]
+Description=Weekly Bosanda backup restore drill
+Documentation=file:/opt/bosanda/current/docs/operations.md
+
+[Timer]
+# Monday 04:30 — after the 03:15 backup has certainly finished, and early enough
+# that a failure is visible at the start of the working week rather than over a
+# weekend.
+OnCalendar=Mon *-*-* 04:30:00
+Persistent=true
+RandomizedDelaySec=900
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target

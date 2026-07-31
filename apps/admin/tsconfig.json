@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The base config targets Node libraries only. The admin dashboard is a
+    // browser surface, so DOM typings are required on top of ES2023.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node", "react", "react-dom"],
+
+    // Next compiles JSX itself (SWC), so TypeScript must leave it untouched.
+    "jsx": "preserve",
+    "plugins": [{ "name": "next" }],
+
+    // `next build` runs its own type check with `noEmit`; emitting declarations
+    // from this project would be meaningless and slows the build down.
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": true,
+    "allowJs": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "app/**/*.ts", "app/**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next"]
+}
