@@ -99,6 +99,9 @@ importers:
       '@bosanda/api-keys':
         specifier: workspace:*
         version: link:../../packages/api-keys
+      '@bosanda/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@bosanda/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -114,6 +117,9 @@ importers:
       '@bosanda/openai':
         specifier: workspace:*
         version: link:../../packages/openai
+      '@bosanda/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
       '@bosanda/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -131,6 +137,30 @@ importers:
         version: 5.11.0
 
   apps/web: {}
+
+  apps/worker:
+    dependencies:
+      '@bosanda/api-keys':
+        specifier: workspace:*
+        version: link:../../packages/api-keys
+      '@bosanda/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@bosanda/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@bosanda/metering':
+        specifier: workspace:*
+        version: link:../../packages/metering
+      '@bosanda/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@bosanda/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
+      '@bosanda/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
 
   packages/anthropic:
     dependencies:

@@ -217,7 +217,7 @@ table added later without its constraints fails the suite.
 
 ## Verified baseline
 
-As of 2026-07-31, the offline suite passes **1,480 tests across 55 files**. Root and
+As of 2026-08-03, the offline suite passes **1,720 tests across 71 files**. Root and
 both Next.js TypeScript projects pass, both Next.js production builds pass, lint and
 format checks pass, and the production dependency audit reports no known
 vulnerabilities.
@@ -227,6 +227,8 @@ Per-package counts:
 | Package         | Files | Tests |
 | --------------- | ----: | ----: |
 | `anthropic`     |     4 |   151 |
+| `apps/gateway`  |    11 |   174 |
+| `apps/worker`   |     5 |    66 |
 | `api-keys`      |     4 |    60 |
 | `auth`          |     6 |   161 |
 | `config`        |     2 |    38 |
@@ -255,24 +257,84 @@ dependency audit.
   synthetic frames and prove local invariants only.
 - `apps/web` and `apps/admin` provide their documented Next.js surfaces and build in
   production mode.
-- `apps/gateway` currently exports only API-key authentication and per-key limiter
-  primitives. It is a library skeleton, not a running Fastify service.
+- `apps/gateway` is a runnable Fastify 5 service: `main.ts` (listen/shutdown),
+  `app.ts`, `dependencies.ts`, `customer-dependencies.ts`, `settlement.ts`, `pipeline.ts`,
+  the database, security, and observability plugins, and the health, models, OpenAI,
+  Anthropic, authenticate, abort, customer session/dashboard, key, and checkout routes,
+  with both SSE stream writers. The `/admin/v1/*` surface is also present (session,
+  catalogue, orders, accounts, providers, status, audit). Proven offline only, via
+  `app.inject()` against in-memory repositories and scripted adapters — no listening
+  socket, no PostgreSQL, and no nginx in front of it.`} nu malembejson?เงินไทยฟรี综合色啪kah? }qarner json 恒一ുവനന്തപുരം т.
+
+- `apps/worker` is a runnable job runner at the path
+  `deploy/systemd/bosanda-worker.service` invokes (`apps/worker/src/main.ts`), with
+  five jobs on independent non-overlapping loops: payment reconciliation, stale stock
+  reservation release, API key expiry, provider cooldown clearing, and data retention.
+  Proven offline only, against in-memory fakes; the transaction fake is not atomic, so
+  no test here claims rollback behaviour.
 - Deployment templates, operational scripts, CI, and runbooks exist.
 
 ## Not implemented or not yet proven
 
-- There is no `apps/gateway/src/main.ts`; no public Fastify server or HTTP routes are
-  runnable yet. No document or package script should imply otherwise.
-- `apps/worker` and the admin-bootstrap CLI are not implemented.
-- Session persistence now carries `last_used_at`, but the absent HTTP session routes
-  do not yet call `touchLastUsed`; end-to-end sliding-session behaviour is therefore
-  not claimed.
+- The gateway's HTTP behaviour is proven only through `app.inject()`. Nothing has
+  bound a port, spoken to PostgreSQL, or passed through nginx, so the SSE flush
+  contract, TLS, proxy buffering, and body-size limits are unverified in production
+  shape. This applies to `/admin/v1/*` as well as `/v1/*`. Customer route behavior is
+  covered by offline `app.inject()` tests, but no customer flow has yet been proven
+  through a listening socket, PostgreSQL, nginx, or a live payment provider.
+- **nginx does not yet account for the management surfaces.** `api.bosanda.dev.conf`
+  routes everything unmatched through `location /` into the gateway, so the
+  `/admin/v1/*` routes — which now exist — would be reachable from the public
+  internet on the ordinary `api_req` bucket, with no edge allowlist; `deny all` is
+  applied only to `/metrics`. Separately, the tighter `api_auth` bucket matches
+  `^/v1/(auth|login|register)(/|$)`, which does not cover `POST /admin/v1/session`
+  or `POST /admin/v1/users/:id/password`, so the credential-handling admin routes
+  would sit in the loose bucket. Session auth still gates every admin route in the
+  application, so this is defence-in-depth rather than an open door, but the vhost
+  needs an admin-specific `location` with the tight bucket and an operator allowlist
+  before the surface is exposed. Not changed here: editing a production vhost is an
+  owner decision, and the routes are not deployed yet.
+- **The worker reconciles but does not activate.** When reconciliation finds an order
+  the provider reports as paid that was never activated, it escalates the order to
+  `review_required` instead of activating it. `executeActivation` needs the new key's
+  encrypted material for a `new_key` grant, which means the worker would have to mint
+  an API key, and that is not wired up. `review_required` is reversible by an
+  operator; a botched activation is not. Until this lands, a genuinely-paid order
+  recovered by the worker rather than by the webhook needs a human to finish it.
+- The admin-bootstrap CLI is not implemented, so the first admin user has no
+  supported creation path.
+- `GET /admin/v1/api-keys` is backed by a port with no real SQL behind it: no
+  cross-user listing, no `prefix`/`lookup_digest` filter, and no count. The
+  `overview` latency percentiles, `activeStreams`, revenue, and reconciliation lag
+  are per-replica in-process metrics, not cluster-wide figures, and
+  `adminUser.lastLoginAt` has no column — it is derived from session rows.
+- Sliding-session behaviour is exercised only through `app.inject()`. The admin
+  session guard (`routes/admin/session.ts:115`) awaits `sessions.touchLastUsed` on
+  every authenticated request, so the wiring exists, but nothing has yet proven the
+  sliding window against a real PostgreSQL row across process restarts.
 - Live PostgreSQL concurrency/integration tests, official SDK tests through nginx,
   and production deployment checks still require owner-run environments described in
   `docs/testing.md`.
 
 ## Open questions (do not resolve these unilaterally)
 
+- **`GET /v1/models` is authenticated, but `apps/web` calls it as a public catalogue.**
+  The gateway returns 401 without an API key, and `scripts/healthcheck.sh:68` asserts
+  that 401 in production as proof the auth boundary holds. Meanwhile
+  `apps/web/app/lib/api.ts` `listPublicModels()` calls the same path with no
+  credential and swallows the failure, so the public pricing table renders empty
+  rather than erroring. Both sides are individually defensible and they contradict
+  each other. The owner decides: expose a separate unauthenticated catalogue route
+  for the marketing page, or drop the table from the public page. Do not weaken the
+  401 on `/v1/models` — the healthcheck depends on it.
+- **`/v1/models` field casing does not match the web client's validator.** The gateway
+  sends snake_case (`context_window`, `supports_tools`, `multiplier_version`), which
+  is correct for an OpenAI-compatible surface. `apps/web/app/lib/schemas.ts`
+  `PublicModelSchema` requires camelCase (`contextWindow`, `supportsTools`,
+  `multiplierVersion`), so the zod parse would reject the real body even with the auth
+  question above resolved. The public wire shape is frozen by SDK compatibility, so the
+  fix belongs on the web side or in a dedicated non-OpenAI catalogue route. The owner
+  decides which.
 - **`model_unavailable`.** PLAN.md §8 names it in the error mapping, but the frozen
   `ErrorCode` union does not contain it. Current code uses `model_not_allowed` (403)
   for package scope and `adapter_disabled` (503) for a switched-off model. The owner

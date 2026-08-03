@@ -1,5 +1,5 @@
 {
-  "name": "@bosanda/gateway",
+  "name": "@bosanda/worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,19 +9,12 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@bosanda/anthropic": "workspace:*",
     "@bosanda/api-keys": "workspace:*",
-    "@bosanda/auth": "workspace:*",
     "@bosanda/config": "workspace:*",
     "@bosanda/database": "workspace:*",
     "@bosanda/metering": "workspace:*",
-    "@bosanda/payments": "workspace:*",
     "@bosanda/observability": "workspace:*",
-    "@bosanda/openai": "workspace:*",
-    "@bosanda/protocol": "workspace:*",
-    "@bosanda/provider-core": "workspace:*",
-    "@bosanda/provider-kiro": "workspace:*",
-    "@bosanda/shared": "workspace:*",
-    "fastify": "5.11.0"
+    "@bosanda/payments": "workspace:*",
+    "@bosanda/shared": "workspace:*"
   }
 }
