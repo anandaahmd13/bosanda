@@ -1,10 +1,10 @@
 /**
  * THE single switch between fixtures and a real backend.
  *
- * No backend exists in this repo tree yet (docs/IMPLEMENTATION-STATUS.md
- * "Remaining" still lists `database`, `auth`, `api-keys`, `payments`, and
- * `apps/gateway`), so the dashboard ships with fixtures ON by default in
- * development and OFF in production.
+ * The gateway may not be running while the dashboard is being reviewed, so the
+ * dashboard ships with fixtures ON by default in development and OFF in
+ * production. The production refusal is the important boundary: fabricated
+ * operator data must never be shown on a live host.
  *
  * Fixtures are refused in production even if someone sets the flag, because a
  * production admin panel showing fabricated revenue and fake account health is

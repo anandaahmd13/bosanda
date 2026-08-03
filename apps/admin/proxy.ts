@@ -42,7 +42,10 @@ export function proxy(request: NextRequest): NextResponse {
   // nonced script-src, inline CSS is not a script-execution vector here.
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    // React's development server uses eval to reconstruct server-component
+    // callstacks. Keep that exception out of production, where React does not
+    // use eval and the CSP should remain strict.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isProduction ? "" : " 'unsafe-eval'"}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self'",
     "font-src 'self'",

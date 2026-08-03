@@ -221,6 +221,7 @@ export {
 export {
   usersRepository,
   type AdminUserSummary,
+  type BootstrapAdminInput,
   type InsertUserInput,
   type UsersRepository,
 } from "./repositories/users.js";

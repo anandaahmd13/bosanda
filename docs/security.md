@@ -142,7 +142,12 @@ channel — see Residual risk. **OWNER**: enable it, preferably as a WireGuard-o
 bind, and test from mobile data before closing your SSH session.
 
 Admin bootstrap is a one-time CLI command and must not silently create a second
-initial admin (§19).
+initial admin (§19). The operator procedure is [`docs/admin-access.md`](./admin-access.md).
+
+The Next admin proxy owns the Content Security Policy and adds a per-request nonce.
+nginx must not emit a second CSP header; browsers enforce multiple policies as an
+intersection. Development React tooling allows `unsafe-eval` only outside
+production, while the production proxy remains strict.
 
 ## Abuse and rate limiting
 

@@ -58,8 +58,25 @@ export type AdminUserSummary = {
 
 export type UsersRepository = ReturnType<typeof usersRepository>;
 
+export type BootstrapAdminInput = InsertUserInput;
+
 export function usersRepository(sql: Executor) {
   return {
+    /**
+     * Serialize first-admin bootstrap callers in the database transaction.
+     *
+     * `hasAdmin()` followed by `insert()` is not enough: two CLI processes can both
+     * observe an empty table. The transaction-scoped advisory lock is intentionally
+     * separate from migration locking, and the recheck happens on the transaction
+     * executor supplied by the caller.
+     */
+    async bootstrapAdmin(input: InsertUserInput): Promise<User | null> {
+      await sql`SELECT pg_advisory_xact_lock(48_205_317)`;
+      const existing = await this.hasAdmin();
+      if (existing) return null;
+      return this.insert(input);
+    },
+
     /**
      * THE LOGIN LOOKUP. Case-insensitive, matching `users_username_lower_key`.
      *

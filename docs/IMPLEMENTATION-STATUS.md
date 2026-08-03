@@ -301,8 +301,9 @@ dependency audit.
   an API key, and that is not wired up. `review_required` is reversible by an
   operator; a botched activation is not. Until this lands, a genuinely-paid order
   recovered by the worker rather than by the webhook needs a human to finish it.
-- The admin-bootstrap CLI is not implemented, so the first admin user has no
-  supported creation path.
+- The admin-bootstrap CLI now provides the supported first-admin creation path (`pnpm admin:bootstrap`). It is tested offline; the owner still needs to run it against the deployment PostgreSQL instance after migrations.
+
+- The admin Next proxy owns its nonce-bearing CSP. Development adds `unsafe-eval` only for React's development diagnostics; production remains strict. The admin nginx vhost no longer emits a second CSP header, avoiding browser policy intersection. This header path is still not proven through a deployed nginx/Next socket.
 - `GET /admin/v1/api-keys` is backed by a port with no real SQL behind it: no
   cross-user listing, no `prefix`/`lookup_digest` filter, and no count. The
   `overview` latency percentiles, `activeStreams`, revenue, and reconciliation lag

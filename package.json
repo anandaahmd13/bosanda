@@ -17,7 +17,8 @@
     "format:check": "prettier --check .",
     "audit:prod": "pnpm audit --prod --audit-level=high",
     "verify": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build:apps",
-    "db:migrate": "tsx packages/database/src/cli/migrate.ts"
+    "db:migrate": "tsx packages/database/src/cli/migrate.ts",
+    "admin:bootstrap": "tsx packages/database/src/cli/bootstrap-admin.ts"
   },
   "devDependencies": {
     "@types/node": "26.1.2",
