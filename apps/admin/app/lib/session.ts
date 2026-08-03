@@ -154,6 +154,8 @@ export async function requireAdmin(): Promise<AdminSession | null> {
   const session = await getAdminSession();
   if (session === null) return null;
   if (session.role !== "admin") return null;
-  if (Date.parse(session.expiresAt) <= Date.now()) return null;
+  // Fixture sessions are local UI scaffolding, not signed backend sessions. Their
+  // fixed timestamp must not expire while reviewing the dashboard in a later run.
+  if (!USE_FIXTURES && Date.parse(session.expiresAt) <= Date.now()) return null;
   return session;
 }

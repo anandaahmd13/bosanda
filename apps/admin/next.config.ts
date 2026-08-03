@@ -41,6 +41,10 @@ const nextConfig: NextConfig = {
   // root and emit a warning. The repo root is the correct answer, and Turbopack
   // requires it as an absolute path.
   turbopack: { root: fileURLToPath(new URL("../..", import.meta.url)) },
+
+  // The local browser may use either loopback spelling. Without this, Next
+  // rejects Server Actions submitted from 127.0.0.1 while the page itself loads.
+  allowedDevOrigins: ["localhost", "127.0.0.1"],
 };
 
 export default nextConfig;
