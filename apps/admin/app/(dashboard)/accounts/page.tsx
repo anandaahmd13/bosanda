@@ -35,7 +35,7 @@ import { csrfCookieName, generateCsrfToken } from "../../lib/session";
 import { formatCount, formatRelative, formatTokensCompact, formatUtc } from "../../lib/format";
 import type { ProviderAccount } from "../../lib/schemas";
 
-export const metadata: Metadata = { title: "Kiro pool — Bosanda operator console" };
+export const metadata: Metadata = { title: "Provider accounts — Bosanda operator console" };
 
 /**
  * Shared credential input. Rendered inside a dialog form, so it posts exactly
@@ -89,6 +89,14 @@ function PersonaField({ id, defaultValue }: { id: string; defaultValue?: "cli" |
         obtained.
       </span>
     </div>
+  );
+}
+
+function AccountPersonaField({ account }: { account: ProviderAccount }) {
+  return account.persona === "app_server" ? (
+    <div className="field-hint mono">app_server</div>
+  ) : (
+    <PersonaField id={`persona-${account.id}`} defaultValue={account.persona} />
   );
 }
 
@@ -211,7 +219,7 @@ function AccountRow({ account, csrfToken }: { account: ProviderAccount; csrfToke
                 spellCheck={false}
               />
             </div>
-            <PersonaField id={`persona-${account.id}`} defaultValue={account.persona} />
+            <AccountPersonaField account={account} />
           </ConfirmDialog>
 
           <ConfirmDialog

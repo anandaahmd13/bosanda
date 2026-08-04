@@ -222,6 +222,22 @@ describe("killSwitchesFromEnv", () => {
   it("defaults to no disabled accounts", () => {
     expect(killSwitchesFromEnv(env()).disabledAccounts.size).toBe(0);
   });
+
+  it("keeps Codex disabled unless both runtime and commercial gates are on", () => {
+    const s = killSwitchesFromEnv(
+      env({
+        OPENAI_CODEX_RUNTIME_ENABLED: true,
+        OPENAI_CODEX_COMMERCIAL_ENABLED: false,
+        OPENAI_CODEX_TOOL_USE_ENABLED: false,
+        OPENAI_CODEX_DISABLED_MODELS: ["bosanda-codex-old"],
+      }),
+      [],
+      "openai_codex",
+    );
+    expect(s.adapterEnabled).toBe(false);
+    expect(s.toolUseEnabled).toBe(false);
+    expect([...s.disabledModels]).toEqual(["bosanda-codex-old"]);
+  });
 });
 
 describe("isModelPubliclyVisible (§3: hide models when globally disabled)", () => {

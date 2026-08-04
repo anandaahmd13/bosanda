@@ -191,9 +191,10 @@ describe("schema invariants", () => {
     expect(schema).toMatch(/version\s+BIGINT NOT NULL DEFAULT 0/);
   });
 
-  it("versions both encrypted columns so keys can rotate", () => {
-    const versioned = [...schema.matchAll(/encryption_key_version INTEGER NOT NULL/g)];
-    expect(versioned).toHaveLength(2);
+  it("keeps credential ciphertext and key versions paired for managed providers", () => {
+    expect(schema).toContain("ALTER COLUMN encrypted_credentials DROP NOT NULL");
+    expect(schema).toContain("ALTER COLUMN encryption_key_version DROP NOT NULL");
+    expect(schema).toMatch(/provider_accounts_credentials_pair CHECK \([\s\S]*encrypted_credentials IS NULL AND encryption_key_version IS NULL/);
   });
 
   it("indexes api_keys by lookup_digest uniquely, since that is the auth lookup", () => {

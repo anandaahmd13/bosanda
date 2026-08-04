@@ -115,6 +115,27 @@ export const envSchema = z.object({
         .filter(Boolean),
     ),
 
+  // --- OpenAI Codex App Server -------------------------------------------
+  // All false by default: login may be staged, but customer traffic and tools
+  // remain off until the live compatibility and commercial gates pass.
+  OPENAI_CODEX_RUNTIME_ENABLED: booleanish(false),
+  OPENAI_CODEX_COMMERCIAL_ENABLED: booleanish(false),
+  OPENAI_CODEX_TOOL_USE_ENABLED: booleanish(false),
+  OPENAI_CODEX_BINARY: z.string().min(1).default("codex"),
+  OPENAI_CODEX_EXPECTED_VERSION: z.string().min(1).default(""),
+  OPENAI_CODEX_STATE_DIR: z.string().min(1).default("/var/lib/bosanda-codex"),
+  OPENAI_CODEX_SOCKET: z.string().min(1).default("/run/bosanda-codex/runtime.sock"),
+  OPENAI_CODEX_LOGIN_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(900_000).default(900_000),
+  OPENAI_CODEX_DISABLED_MODELS: z
+    .string()
+    .default("")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((m) => m.trim())
+        .filter(Boolean),
+    ),
+
   // --- Limits and timeouts (§7, §16) -------------------------------------
   KEY_MAX_ACTIVE_REQUESTS: z.coerce.number().int().min(1).default(5),
   KEY_MAX_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).default(100),

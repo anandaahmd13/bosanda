@@ -56,6 +56,7 @@ import {
   killSwitchesFromEnv,
   type KillSwitches,
   type Persona,
+  type ProviderType,
   type SchedulableAccount,
 } from "@bosanda/provider-core";
 import { CredentialManager, KiroDirectAdapter } from "@bosanda/provider-kiro";
@@ -71,7 +72,9 @@ import {
  * The provider type this MVP serves. §22 lists exactly one provider for v1;
  * naming it once here keeps the pool query and the adapter lookup from drifting.
  */
-export const PROVIDER_TYPE = "kiro";
+export const PROVIDER_TYPE = "kiro" as const;
+export const CODEX_PROVIDER_TYPE = "openai_codex" as const;
+export type GatewayProviderType = ProviderType;
 
 /**
  * Repository surfaces, narrowed to what the HTTP layer actually calls.
@@ -83,8 +86,13 @@ export const PROVIDER_TYPE = "kiro";
 export type GatewayRepositories = {
   apiKeys: Pick<ApiKeysRepository, "findByLookupDigest" | "touchLastUsed">;
   models: Pick<ModelsRepository, "listPublished" | "findByPublicId">;
-  providerAccounts: Pick<ProviderAccountsRepository, "listEligibleHealth">;
+  providerAccounts: Pick<ProviderAccountsRepository, "listEligibleHealth" | "listDisabledIds">;
 };
+
+export function narrowProviderType(providerType: string): ProviderType {
+  if (providerType === PROVIDER_TYPE || providerType === CODEX_PROVIDER_TYPE) return providerType;
+  throw new Error(`unsupported provider type: ${providerType}`);
+}
 
 /**
  * The two repositories settlement writes, bound to one transaction.
@@ -120,7 +128,7 @@ export type GatewayDeps = GatewayRepositories & {
    * without a deploy (§3). Returning the whole struct rather than a boolean keeps
    * the precedence logic in `evaluateKillSwitches` where it is tested.
    */
-  killSwitches: () => Promise<KillSwitches>;
+  killSwitches: (provider?: ProviderType) => Promise<KillSwitches>;
 
   /**
    * Runs `fn` inside one database transaction (§16 invariant 4).
@@ -252,6 +260,8 @@ export function createDependencies(options: CreateDependenciesOptions): GatewayD
     },
   });
 
+  // The Codex runtime is injected by the dedicated runtime service. Until it is
+  // wired and both gates pass, register no live adapter; staged models remain unavailable.
   const adapters: AdapterRegistry = createAdapterRegistry([adapter]);
 
   return {
@@ -278,9 +288,12 @@ export function createDependencies(options: CreateDependenciesOptions): GatewayD
     transact: (fn) =>
       withTransaction(sql, (tx) => fn({ quota: quotaRepository(tx), usage: usageRepository(tx) })),
 
-    killSwitches: async () => {
+    killSwitches: async (provider = PROVIDER_TYPE) => {
       const flags = await flagsRepository(sql).readAll();
-      const baseline = killSwitchesFromEnv(env);
+      const selectedProvider = provider;
+      const disabledAccounts =
+        await providerAccountsRepository(sql).listDisabledIds(selectedProvider);
+      const baseline = killSwitchesFromEnv(env, disabledAccounts, selectedProvider);
       return killSwitchesFrom(
         {
           adapterEnabled: baseline.adapterEnabled,
@@ -289,7 +302,7 @@ export function createDependencies(options: CreateDependenciesOptions): GatewayD
           disabledModels: baseline.disabledModels,
         },
         flags,
-        baseline.disabledAccounts,
+        disabledAccounts,
       );
     },
 

@@ -70,7 +70,17 @@ export type KillSwitchQuery = {
 export function killSwitchesFromEnv(
   env: Env,
   disabledAccounts: Iterable<string> = [],
+  provider: "kiro" | "openai_codex" = "kiro",
 ): KillSwitches {
+  if (provider === "openai_codex") {
+    return {
+      adapterEnabled: env.OPENAI_CODEX_RUNTIME_ENABLED && env.OPENAI_CODEX_COMMERCIAL_ENABLED,
+      toolUseEnabled: env.OPENAI_CODEX_TOOL_USE_ENABLED,
+      disabledRegions: new Set<string>(),
+      disabledModels: new Set(env.OPENAI_CODEX_DISABLED_MODELS),
+      disabledAccounts: new Set(disabledAccounts),
+    };
+  }
   return {
     adapterEnabled: env.KIRO_DIRECT_ENABLED,
     toolUseEnabled: env.KIRO_TOOL_USE_ENABLED,

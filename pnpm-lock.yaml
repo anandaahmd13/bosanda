@@ -129,6 +129,9 @@ importers:
       '@bosanda/provider-kiro':
         specifier: workspace:*
         version: link:../../packages/provider-kiro
+      '@bosanda/provider-codex':
+        specifier: workspace:*
+        version: link:../../packages/provider-codex
       '@bosanda/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -287,6 +290,18 @@ importers:
 
   packages/protocol:
     dependencies:
+      '@bosanda/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  packages/provider-codex:
+    dependencies:
+      '@bosanda/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@bosanda/provider-core':
+        specifier: workspace:*
+        version: link:../provider-core
       '@bosanda/shared':
         specifier: workspace:*
         version: link:../shared

@@ -61,9 +61,9 @@ export type InsertProviderAccountInput = {
   status: ProviderAccountStatus;
   region: string | null;
   persona: string | null;
-  /** Sealed envelope. Never logged (§16). */
-  encryptedCredentials: string;
-  encryptionKeyVersion: number;
+  /** Sealed envelope. Null for an App Server-managed account. */
+  encryptedCredentials: string | null;
+  encryptionKeyVersion: number | null;
   profileArn: string | null;
   createdAt: Date;
 };
@@ -236,8 +236,8 @@ export function providerAccountsRepository(sql: Executor) {
       const rows = await sql<
         {
           id: string;
-          encrypted_credentials: string;
-          encryption_key_version: number;
+          encrypted_credentials: string | null;
+          encryption_key_version: number | null;
           credential_version: string;
           region: string | null;
           persona: string | null;
@@ -250,7 +250,7 @@ export function providerAccountsRepository(sql: Executor) {
         WHERE id = ${accountId}
       `;
       const row = firstRow(rows);
-      if (row === null) return null;
+      if (row === null || row.encrypted_credentials === null || row.encryption_key_version === null) return null;
       return {
         accountId: row.id,
         encryptedCredentials: row.encrypted_credentials,

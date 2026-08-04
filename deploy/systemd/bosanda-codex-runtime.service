@@ -1,0 +1,35 @@
+[Unit]
+Description=Bosanda Codex App Server runtime
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bosanda-codex
+Group=bosanda-codex
+WorkingDirectory=/opt/bosanda/current
+EnvironmentFile=/etc/bosanda/codex-runtime.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env node --enable-source-maps ./node_modules/.bin/tsx apps/codex-runtime/src/main.ts
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/var/lib/bosanda-codex /run/bosanda-codex
+RuntimeDirectory=bosanda-codex
+RuntimeDirectoryMode=0750
+StateDirectory=bosanda-codex
+StateDirectoryMode=0700
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

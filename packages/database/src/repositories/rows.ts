@@ -804,8 +804,8 @@ export type ProviderAccountRow = {
   status: string;
   region: string | null;
   persona: string | null;
-  encrypted_credentials: string;
-  encryption_key_version: number;
+  encrypted_credentials: string | null;
+  encryption_key_version: number | null;
   profile_arn: string | null;
   credential_version: string;
   cooldown_until: Date | null;
@@ -829,7 +829,7 @@ export type ProviderAccount = {
   status: ProviderAccountStatus;
   region: string | null;
   persona: string | null;
-  encryptionKeyVersion: number;
+  encryptionKeyVersion: number | null;
   profileArn: string | null;
   credentialVersion: number;
   cooldownUntil: Date | null;

@@ -21,6 +21,7 @@
     "@bosanda/protocol": "workspace:*",
     "@bosanda/provider-core": "workspace:*",
     "@bosanda/provider-kiro": "workspace:*",
+    "@bosanda/provider-codex": "workspace:*",
     "@bosanda/shared": "workspace:*",
     "fastify": "5.11.0"
   }

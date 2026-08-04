@@ -99,10 +99,10 @@ export const providerAccount = z
   .object({
     id: z.string().min(1),
     label: z.string().min(1),
-    providerType: z.literal("kiro"),
+    providerType: z.enum(["kiro", "openai_codex"]),
     status: accountStatus,
     region: z.string().min(1),
-    persona: z.enum(["cli", "ide"]),
+    persona: z.enum(["cli", "ide", "app_server"]),
     activeRequests: z.number().int().nonnegative(),
     errorScore: z.number().nonnegative(),
     cooldownUntil: utcInstant.nullable(),

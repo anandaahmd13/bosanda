@@ -13,6 +13,7 @@
       "@bosanda/anthropic": ["packages/anthropic/src/index.ts"],
       "@bosanda/provider-core": ["packages/provider-core/src/index.ts"],
       "@bosanda/provider-kiro": ["packages/provider-kiro/src/index.ts"],
+      "@bosanda/provider-codex": ["packages/provider-codex/src/index.ts"],
       "@bosanda/metering": ["packages/metering/src/index.ts"],
       "@bosanda/payments": ["packages/payments/src/index.ts"],
       "@bosanda/observability": ["packages/observability/src/index.ts"],
@@ -23,6 +24,7 @@
     "packages/*/src/**/*.ts",
     "packages/*/test/**/*.ts",
     "apps/gateway/src/**/*.ts",
+    "apps/codex-runtime/src/**/*.ts",
     "apps/worker/src/**/*.ts",
     "spikes/*/src/**/*.ts",
     "vitest.config.ts"

@@ -9,10 +9,10 @@
 
 import type { CanonicalEvent, CanonicalRequest } from "@bosanda/protocol";
 
-export type ProviderType = "kiro";
+export type ProviderType = "kiro" | "openai_codex";
 
 /** Which upstream persona an account authenticates as (PLAN.md §2). */
-export type Persona = "cli" | "ide";
+export type Persona = "cli" | "ide" | "app_server";
 
 export type AccountStatus =
   | "active"

@@ -27,6 +27,7 @@ export default defineConfig({
       "@bosanda/anthropic": pkg("anthropic"),
       "@bosanda/provider-core": pkg("provider-core"),
       "@bosanda/provider-kiro": pkg("provider-kiro"),
+      "@bosanda/provider-codex": pkg("provider-codex"),
       "@bosanda/metering": pkg("metering"),
       "@bosanda/payments": pkg("payments"),
       "@bosanda/observability": pkg("observability"),

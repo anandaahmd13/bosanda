@@ -37,7 +37,7 @@ import { evaluateKillSwitches, streamWithFailover } from "@bosanda/provider-core
 import type { ProviderModel, SchedulableAccount } from "@bosanda/provider-core";
 import { toKeyQuotaState, type AuthenticatedApiKey } from "@bosanda/database";
 import type { Logger } from "@bosanda/observability";
-import { PROVIDER_TYPE, toSchedulable, type GatewayDeps } from "./dependencies.js";
+import { narrowProviderType, toSchedulable, type GatewayDeps } from "./dependencies.js";
 import { settleRequest, type TurnStatus } from "./settlement.js";
 import type { Slot } from "./limits.js";
 
@@ -52,6 +52,7 @@ import type { Slot } from "./limits.js";
  */
 export type ResolvedModel = {
   model: ProviderModel;
+  providerType: "kiro" | "openai_codex";
   multiplier: number;
   multiplierExact: string;
   multiplierVersion: number;
@@ -91,6 +92,7 @@ export async function resolveRequestModel(
   }
 
   return {
+    providerType: narrowProviderType(record.providerType),
     model: {
       publicId: record.publicId,
       upstreamId: record.upstreamId,
@@ -128,9 +130,10 @@ export async function resolveRequestModel(
  */
 export async function loadPool(
   model: string,
+  providerType: ResolvedModel["providerType"],
   deps: Pick<GatewayDeps, "providerAccounts" | "clock" | "health">,
 ): Promise<SchedulableAccount[]> {
-  const rows = await deps.providerAccounts.listEligibleHealth(PROVIDER_TYPE, deps.clock.now());
+  const rows = await deps.providerAccounts.listEligibleHealth(providerType, deps.clock.now());
   const supported: ReadonlySet<string> = new Set([model]);
   const pool = rows.map((row) => toSchedulable(row, supported));
 
@@ -147,7 +150,7 @@ export async function loadPool(
 
   if (pool.length === 0) {
     throw new BosandaError("no_healthy_provider", {
-      internalDetail: `no eligible ${PROVIDER_TYPE} accounts for model ${model}`,
+      internalDetail: `no eligible ${providerType} accounts for model ${model}`,
     });
   }
   return pool;
@@ -194,7 +197,7 @@ export async function admit(
     const resolved = await resolveRequestModel(request.model, deps);
 
     // 5. Kill switches (§3), BEFORE any credential is loaded.
-    const switches = await deps.killSwitches();
+    const switches = await deps.killSwitches(resolved.providerType);
     const decision = evaluateKillSwitches(switches, { model: request.model });
     if (!decision.allowed) {
       // `decision.reason` is operator-facing and already sanitized. The client sees
@@ -213,7 +216,7 @@ export async function admit(
     }
 
     // 6. Pool.
-    const pool = await loadPool(request.model, deps);
+    const pool = await loadPool(request.model, resolved.providerType, deps);
 
     return { admitted: { slot, resolved, pool, state }, request };
   } catch (error) {
@@ -255,7 +258,7 @@ export type RunStreamInput = {
 export async function runStream(input: RunStreamInput, deps: GatewayDeps): Promise<StreamOutcome> {
   const { request, admitted, signal, emit } = input;
   const startedAt = deps.clock.now().getTime();
-  const adapter = deps.adapters.get(PROVIDER_TYPE);
+  const adapter = deps.adapters.get(admitted.resolved.providerType);
 
   let providerAccountId: string | null = null;
   let retries = 0;
@@ -364,7 +367,7 @@ export async function settleOutcome(input: SettleOutcomeInput, deps: GatewayDeps
       upstreamUsage: outcome.upstreamUsage,
       status: outcome.status,
       providerAccountId: outcome.providerAccountId,
-      adapterVersion: deps.adapters.tryGet(PROVIDER_TYPE)?.adapterVersion ?? null,
+      adapterVersion: deps.adapters.tryGet(admitted.resolved.providerType)?.adapterVersion ?? null,
       retries: outcome.retries,
       ttfbMs: outcome.ttfbMs,
       durationMs: outcome.durationMs,

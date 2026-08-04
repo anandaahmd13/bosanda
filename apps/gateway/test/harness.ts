@@ -374,6 +374,7 @@ export function harness(options: HarnessOptions = {}): Harness {
     },
     providerAccounts: {
       listEligibleHealth: async () => accounts,
+      listDisabledIds: async () => [],
     },
 
     transact: async (fn) => {
