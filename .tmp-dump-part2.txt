@@ -1,0 +1,357 @@
+use session. **No live
+sub-gate G0–G4 has been executed.** Offline adapter and harness tests do not substitute
+for that evidence.
+
+Every row in `docs/direct-adapter-gate.md` remains `NOT-YET-EXECUTED` until the owner
+records real observations. `KIRO_DIRECT_ENABLED` defaults to `false` and must stay
+false. The project is not cleared for deployment or paid sales.
+====CI====
+# Continuous integration (PLAN.md §19, §20 M4).
+#
+# One job, six checks, in ascending order of cost: format, lint, typecheck, test,
+# application builds, then the production dependency audit. The order matters —
+# a formatting error should fail before the more expensive release checks.
+#
+# Deliberately NOT here: secrets, deployment, database services, and anything
+# needing real Kiro credentials. Deployment is scripts/deploy.sh run by the owner
+# on the VPS. The §19 items that require a live PostgreSQL or real upstream
+# credentials cannot run in CI at all — see docs/testing.md for which ones and
+# how the owner runs them.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Manual trigger, useful for re-running against a changed base.
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref. Saves minutes on a busy branch without
+# affecting main, where each push gets its own concurrency group.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only token. This workflow never pushes, comments, or publishes.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm must be installed before setup-node, so setup-node's pnpm cache
+      # backend can find the binary.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # Matches the engines field in package.json (>=22.11.0). Pinned to a
+          # major so a Node release cannot break CI without a deliberate bump.
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile fails if pnpm-lock.yaml does not match package.json,
+      # which is exactly what we want in CI: it catches a dependency added
+      # without committing the lockfile, and guarantees every check below ran
+      # against the same tree a deploy would install.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm run format:check
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build apps
+        run: pnpm run build:apps
+
+      - name: Audit production dependencies
+        run: pnpm run audit:prod
+====CODEXGATE====
+# Codex App Server compatibility gate
+
+Status: **NOT PASSED**. Codex customer routing and tool use remain disabled.
+
+Pinned reference: `openai/codex` commit `c82cb044f3413e6584308d969b94e7a1430711ab`.
+
+## Supported boundary
+
+Bosanda must launch the official CLI as `codex app-server --listen stdio://` and speak its newline-delimited external protocol. The wire format is JSON request/notification/response without relying on a `jsonrpc` field. Each connection performs exactly:
+
+1. `initialize` with `clientInfo` (`name`, optional `title`, `version`) and capabilities.
+2. Wait for the initialize response.
+3. Send `{"method":"initialized"}` with no params.
+4. Use documented account/model/thread/turn methods only.
+
+Bosanda must not implement OAuth token exchange, copy `auth.json`, call private ChatGPT endpoints, or use the in-process `app-server-client` crate as an external protocol.
+
+## Owner-run evidence required
+
+- Record the exact `codex --version` output and reject unexpected versions.
+- Start browser login through App Server; use `ssh -N -L 1455:127.0.0.1:1455 <host>` for a remote server.
+- Verify account state after login, restart, and logout without reading token material.
+- Verify model discovery, text/reasoning deltas, complete usage, abort, and sanitized errors.
+- Prove complete canonical history and client-side dynamic-tool continuation across requests.
+- Prove no shell, filesystem, MCP, web, collaboration, or other host-side action can run in the runtime account.
+- Verify process loss never silently resumes a turn on another account.
+
+## Release gates
+
+Until all evidence is recorded, models stay unpublished/untested and `OPENAI_CODEX_COMMERCIAL_ENABLED`, `OPENAI_CODEX_TOOL_USE_ENABLED`, and public Codex routing stay false. Written OpenAI approval is also required before subscription-account pooling or resale is enabled.
+
+The App Server README marks websocket transport and several plugin methods experimental or unsuitable for production clients; use stdio only for this integration.
+====README====
+# Bosanda
+
+A paid, public AI gateway that speaks both the **OpenAI** and **Anthropic** wire protocols over a
+pool of service-owned Kiro accounts.
+
+Customers buy weighted-token packages, get an API key, and point any OpenAI- or Anthropic-compatible
+client (including Claude Code) at Bosanda by changing one base URL.
+
+> **Status: pre-release. Not deployed, and not cleared for deployment.**
+> The upstream Kiro generation protocol is undocumented and reconstructed from observed traffic. The
+> M0 feasibility gate in [`PLAN.md`](./PLAN.md) §3 has **not** been executed — it requires real Kiro
+> credentials and live traffic that this repository does not contain. `KIRO_DIRECT_ENABLED` defaults
+> to `false` and must stay that way until the owner records PASS evidence in
+> `docs/direct-adapter-gate.md`. See [`docs/IMPLEMENTATION-STATUS.md`](./docs/IMPLEMENTATION-STATUS.md)
+> for what is actually built versus still missing.
+
+## Documents
+
+| File                                                               | What it is                                                                                                                                    |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`PLAN.md`](./PLAN.md)                                             | The implementation spec. Section numbers (§5, §8, §14…) are cited throughout the code and are the authority when code and intuition disagree. |
+| [`DESIGN.md`](./DESIGN.md)                                         | The "glass-on-dark-navy" Vision UI design system — the CSS tokens the frontends must use.                                                     |
+| [`docs/IMPLEMENTATION-STATUS.md`](./docs/IMPLEMENTATION-STATUS.md) | Frozen contracts, conventions, security invariants, and honest progress. Read this first before writing code.                                 |
+
+## Layout
+
+```
+packages/
+  protocol/         canonical provider-neutral request/event types, error taxonomy, request limits
+  shared/           ULIDs, single-flight, timeouts, redaction, clock
+  config/           zod-validated env, versioned secret keyring
+  observability/    pino logger (redacting), Prometheus metrics registry
+  provider-core/    ProviderAdapter contract, scheduling, cooldown, breaker, retry, kill switches
+  provider-kiro/    Kiro Direct HTTP adapter + AWS binary EventStream decoder
+  openai/           OpenAI-compatible request decode / response + SSE encode
+  anthropic/        Anthropic-compatible surface (required for Claude Code)
+  metering/         weighted-token arithmetic, multiplier versioning, quota decisions
+  database/         PostgreSQL schema, migrations, repositories (no ORM)
+  auth/             Argon2id passwords, sessions, CSRF, roles
+  api-keys/         HMAC lookup digests + XChaCha20-Poly1305 key envelopes
+  payments/         Pakasir integration, webhook verification, order state machine
+apps/
+  gateway/          Fastify API primitives; HTTP runtime not implemented yet
+  web/              Next.js storefront + user dashboard -> bosanda.dev
+  admin/            Next.js operator dashboard  -> admin.bosanda.dev
+  worker/           planned reconciliation/maintenance runtime; not implemented
+spikes/
+  kiro-direct/      operator harness for producing the M0 gate evidence
+deploy/             nginx vhosts, systemd units, env template
+scripts/            deploy, backup/restore, healthcheck, key rotation
+```
+
+The dependency direction is one-way: `apps` depend on `packages`; the client-facing protocol packages
+(`openai`, `anthropic`) and the provider packages (`provider-kiro`) never import each other. They meet
+only at the canonical protocol in `packages/protocol`, which is what makes a second provider or a
+third wire format additive rather than invasive.
+
+## Toolchain
+
+Node 25, pnpm 11 workspace, TypeScript 5.9, ESM throughout (`"type": "module"` — relative imports
+carry a `.js` extension). TypeScript is deliberately held at 5.9 rather than 7.x: typescript-eslint 8
+and Next 16 are only validated against 5.x.
+
+```bash
+pnpm install          # at the repo root only
+pnpm verify           # format -> lint -> all typechecks -> tests -> Next builds
+pnpm audit --prod --audit-level=high         # production dependency advisories
+pnpm exec vitest run packages/protocol       # one package
+```
+
+**Do not run `pnpm add` inside a package.** All dependencies are installed at the root so parallel
+work cannot race the lockfile.
+
+## Non-negotiables
+
+These are enforced by tests and are not stylistic preferences:
+
+- Prompts, responses, tool inputs, and tool results are **never** logged or persisted. Token _counts_
+  are. Error _classes_ are.
+- Plaintext API keys and provider credentials are never logged, never stored in the clear, and never
+  rendered in the admin UI.
+- Only `BosandaError.publicMessage` crosses the client boundary — never an internal detail, stack,
+  upstream body, or provider account ID.
+- Quota changes write an append-only ledger row and the balance update in the **same** transaction.
+- Tools execute **client-side only**. The server never executes a tool and never injects a
+  filesystem, shell, or MCP tool into an upstream request.
+- A request may be retried on a different account **only before the first output byte** reaches the
+  client.
+- Payment webhooks are authenticated over the raw body, idempotent on the provider event key, and
+  validated against the server-created order snapshot — never against amounts or quotas supplied by
+  the caller.
+====PKGDIRS====
+apps:
+admin
+codex-runtime
+gateway
+web
+worker
+
+packages:
+anthropic
+api-keys
+auth
+config
+database
+metering
+observability
+openai
+payments
+protocol
+provider-codex
+provider-core
+provider-kiro
+shared
+
+spikes:
+codex-app-server
+kiro-direct
+====PROVIDERCODEX====
+apps/codex-runtime:
+package.json
+src
+test
+
+apps/codex-runtime/src:
+index.ts
+main.ts
+rpc.ts
+socket.ts
+
+apps/codex-runtime/test:
+
+packages/provider-codex:
+node_modules
+package.json
+src
+test
+
+packages/provider-codex/node_modules:
+@bosanda
+
+packages/provider-codex/node_modules/@bosanda:
+protocol
+provider-core
+shared
+
+packages/provider-codex/src:
+adapter.ts
+continuation.ts
+events.ts
+index.ts
+models.ts
+runtime.ts
+
+packages/provider-codex/test:
+adapter.test.ts
+====GREP====
+DESIGN.md:235:| Models & adapter                | Publish toggles; compatibility-suite results as pass/fail chips (`--success`/`--danger`) |
+DESIGN.md:242:- **Healthy / enabled / paid** → `--success`
+PLAN.md:158:- images, if ever enabled later;
+PLAN.md:186:Claude Code compatibility is mandatory. Prove the full loop:
+PLAN.md:211:claims Claude Code compatibility.
+PLAN.md:232:- automatic circuit opening when compatibility errors exceed a threshold;
+PLAN.md:233:- hiding all Kiro models from `/v1/models` when the adapter is globally disabled.
+PLAN.md:235:No payment may activate a Kiro package while the global Kiro adapter is disabled.
+PLAN.md:250:rerunning the compatibility suite before deployment.
+PLAN.md:285:│   └── kiro-direct/            # isolated compatibility experiments
+PLAN.md:406:- persona and compatibility metadata.
+PLAN.md:415:  protocol-specific continuation requires the supplied history.
+PLAN.md:444:- enabled;
+PLAN.md:446:- not manually disabled;
+PLAN.md:493:- consecutive compatibility/auth failures open the circuit;
+PLAN.md:540:Bearer authentication may also be accepted for client compatibility.
+PLAN.md:568:|  503 | No healthy provider or Kiro adapter disabled            |
+PLAN.md:593:- adapter compatibility status.
+PLAN.md:601:published Kiro models that pass the tool-use compatibility gate. The schema supports
+PLAN.md:607:suite. If no model passes, sales stay disabled.
+PLAN.md:876:  published, compatibility_status, updated_at
+PLAN.md:932:- Run a compatibility probe.
+PLAN.md:938:- View compatibility-suite results.
+PLAN.md:1008:- adapter compatibility errors;
+PLAN.md:1024:- compatibility error spike;
+PLAN.md:1088:- Upstream protocol compatibility probe.
+PLAN.md:1104:- No disabled/cooldown account selected.
+PLAN.md:1114:### Protocol compatibility
+PLAN.md:1221:1. Keep public registration/payment disabled.
+PLAN.md:1253:- The direct adapter cannot be disabled quickly when compatibility breaks.
+spikes\codex-app-server\src\index.ts:8:export const CODEX_APP_SERVER_PROTOCOL = {
+spikes\kiro-direct\src\harness.ts:14: *    NOTHING about upstream compatibility.
+spikes\kiro-direct\src\harness.ts:514:      ? "MODE: offline. Synthetic frames only. This proves NOTHING about upstream compatibility.\n"
+docs\admin-access.md:31:Development fixture mode is enabled by default only outside production. It can be disabled with `ADMIN_USE_FIXTURES=false` and `ADMIN_API_BASE_URL=http://127.0.0.1:4000`. Production always refuses fixture data, even if the flag is set. The dashboard header labels fixture mode as `FIXTURE DATA` and live mode as `LIVE`.
+docs\admin-access.md:45:Offline tests and `app.inject()` checks do not prove a listening socket, PostgreSQL concurrency, nginx behavior, TLS, systemd, or a live payment provider. Run the owner-gated checks in [`testing.md`](./testing.md) and update [`IMPLEMENTATION-STATUS.md`](./IMPLEMENTATION-STATUS.md) with observed evidence rather than treating this document as deployment proof.
+docs\codex-app-server-gate.md:1:# Codex App Server compatibility gate
+docs\codex-app-server-gate.md:3:Status: **NOT PASSED**. Codex customer routing and tool use remain disabled.
+docs\codex-app-server-gate.md:16:Bosanda must not implement OAuth token exchange, copy `auth.json`, call private ChatGPT endpoints, or use the in-process `app-server-client` crate as an external protocol.
+docs\codex-app-server-gate.md:24:- Prove complete canonical history and client-side dynamic-tool continuation across requests.
+docs\codex-app-server-gate.md:30:Until all evidence is recorded, models stay unpublished/untested and `OPENAI_CODEX_COMMERCIAL_ENABLED`, `OPENAI_CODEX_TOOL_USE_ENABLED`, and public Codex routing stay false. Written OpenAI approval is also required before subscription-account pooling or resale is enabled.
+apps\codex-runtime\src\rpc.ts:44:      env: { PATH: process.env.PATH ?? "", CODEX_HOME: options.stateDir, ...options.env },
+packages\anthropic\test\errors.test.ts:29:  "adapter_disabled",
+packages\anthropic\test\errors.test.ts:67:    expect(anthropicErrorType("adapter_disabled")).toBe("overloaded_error");
+docs\IMPLEMENTATION-STATUS.md:197:double-credit, and a model may only be `published` once its compatibility gate
+docs\IMPLEMENTATION-STATUS.md:336:  question above resolved. The public wire shape is frozen by SDK compatibility, so the
+docs\IMPLEMENTATION-STATUS.md:341:  for package scope and `adapter_disabled` (503) for a switched-off model. The owner
+apps\codex-runtime\src\main.ts:6:  binary: env.OPENAI_CODEX_BINARY,
+apps\codex-runtime\src\main.ts:7:  expectedVersion: env.OPENAI_CODEX_EXPECTED_VERSION,
+apps\codex-runtime\src\main.ts:8:  stateDir: env.OPENAI_CODEX_STATE_DIR,
+apps\codex-runtime\src\main.ts:9:  socketPath: env.OPENAI_CODEX_SOCKET,
+docs\direct-adapter-gate.md:1:# Kiro Direct Adapter — compatibility gate (M0)
+docs\direct-adapter-gate.md:82:Images are out of scope for v1 (PLAN.md §1 non-goals) and are not gated here.
+docs\direct-adapter-gate.md:113:launch claiming Claude Code compatibility on a failed G3. This is not a
+docs\direct-adapter-gate.md:157:with tools enabled would have been rejected outright, and 3.8 ("valid Claude Code
+docs\direct-adapter-gate.md:218:| 5.6 | Circuit opens automatically past the compatibility-error threshold | NOT-YET-EXECUTED |
+docs\direct-adapter-gate.md:219:| 5.7 | Kiro models hidden from `/v1/models` when globally disabled        | NOT-YET-EXECUTED |
+docs\direct-adapter-gate.md:220:| 5.8 | No payment activates a Kiro package while globally disabled        | NOT-YET-EXECUTED |
+docs\testing.md:5:and unit tests do not clear a live compatibility or deployment gate.
+docs\testing.md:47:synthetic EventStream frames; they do not establish live Kiro compatibility.
+docs\testing.md:78:Offline tests cover least-loaded selection, disabled/cooldown filtering, one attempt per
+docs\testing.md:85:### Protocol compatibility
+deploy\nginx\README.md:61:certificates must be issued before the HTTPS blocks are enabled.
+deploy\nginx\README.md:88:     sudo ln -sf /etc/nginx/sites-available/$h.conf /etc/nginx/sites-enabled/$h.conf
+deploy\nginx\README.md:90:   sudo rm -f /etc/nginx/sites-enabled/default  # else it answers unmatched Host headers
+docs\security.md:137:Additional hardening available and **not enabled by default**: an IP allowlist or
+docs\security.md:139:`deploy/nginx/sites-available/admin.bosanda.dev.conf`. It is disabled because a
+docs\security.md:279:mitigated, because the private half stays offline.
+docs\security.md:295:admin IP allowlist ships disabled.
+docs\security.md:309:compatibility gate (§3) has not been passed. Treat every deployment artifact in
+packages\auth\test\cookies.test.ts:32:  it("allows secure to be disabled only explicitly, for local http", () => {
+docs\runbook.md:132:# Ubuntu's default vhost owns "default_server"; leaving it enabled makes the
+docs\runbook.md:134:sudo rm -f /etc/nginx/sites-enabled/default
+docs\runbook.md:137:  sudo ln -sf "/etc/nginx/sites-available/$s.conf" "/etc/nginx/sites-enabled/$s.conf"
+docs\runbook.md:278:Then follow §20 M5: registration and payment disabled, internal test keys,
+packages\anthropic\src\errors.ts:55:  adapter_disabled: "overloaded_error",
+docs\operations.md:190:| `bosanda_usage_estimated_total`        | Authoritative vs estimated. **A rising estimated share directly degrades billing accuracy** — it means `metricsEvent` stopped supplying complete usage, and Bosanda fell back to counting. Investigate as a compatibility signal. |
+docs\operations.md:196:Alert thresholds §17 asks for: no healthy providers, compatibility error spike,
+docs\operations.md:213:| `KIRO_DIRECT_ENABLED=false`    | **Master.** All Kiro models hidden from `/v1/models`, all API requests get a sanitized 503, and no payment may activate a Kiro package. Existing keys stay visible. | The upstream protocol broke, credentials are compromised, or you cannot yet explain a compatibility spike. Reach for this one first and diagnose afterwards.                                      |
+docs\operations.md:215:| `KIRO_DISABLED_MODELS=a,b`     | Per-model.                                                                                                                                                          | One model fails the compatibility probe while others are healthy.                                                                                                                                 |
+docs\operations.md:218:| Automatic circuit breaker      | Opens per account/model on repeated compatibility or auth failures.                                                                                                 | Nothing to do — it is already protecting you. Sustained open circuits mean investigate.                           

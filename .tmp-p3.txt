@@ -1,0 +1,171 @@
+                                                                                |
+docs\incident-response.md:56:package while the adapter is disabled, but zero stock stops customers reaching a
+docs\incident-response.md:67:**Diagnose.** Run the §19 compatibility fixtures against the live service. Compare
+docs\incident-response.md:97:4. Every account manually disabled. It happens; check the dashboard before
+apps\admin\app\lib\api.ts:298:  enabled: boolean;
+apps\admin\app\lib\api.ts:304:      message: `Account would be ${input.enabled ? "enabled" : "disabled"} (fixture mode).`,
+apps\admin\app\lib\api.ts:308:    `/admin/v1/provider-accounts/${encodeURIComponent(input.accountId)}/enabled`,
+apps\admin\app\lib\api.ts:310:    { method: "POST", body: { enabled: input.enabled, reason: input.reason } },
+apps\admin\app\lib\api.ts:536:  enabled: boolean;
+apps\admin\app\lib\api.ts:542:      message: `User would be ${input.enabled ? "enabled" : "disabled"} (fixture mode).`,
+apps\admin\app\lib\api.ts:545:  return request(`/admin/v1/users/${encodeURIComponent(input.userId)}/enabled`, mutationResult, {
+apps\admin\app\lib\api.ts:547:    body: { enabled: input.enabled, reason: input.reason },
+apps\admin\app\lib\api.ts:657:  enabled: boolean;
+apps\admin\app\lib\api.ts:663:      message: `${input.key} would be ${input.enabled ? "enabled" : "DISABLED"} (fixture mode).`,
+apps\admin\app\lib\api.ts:668:    body: { enabled: input.enabled, reason: input.reason },
+apps\admin\app\lib\schemas.ts:23:export const accountStatus = z.enum(["active", "disabled", "cooling_down", "credential_invalid"]);
+apps\admin\app\lib\schemas.ts:37:export const compatibilityStatus = z.enum(["unknown", "passing", "failing"]);
+apps\admin\app\lib\schemas.ts:41:export const userStatus = z.enum(["active", "disabled"]);
+apps\admin\app\lib\schemas.ts:79:    disabledRegionCount: z.number().int().nonnegative(),
+apps\admin\app\lib\schemas.ts:80:    disabledModelCount: z.number().int().nonnegative(),
+apps\admin\app\lib\schemas.ts:81:    disabledAccountCount: z.number().int().nonnegative(),
+apps\admin\app\lib\schemas.ts:137:    compatibilityStatus,
+apps\admin\app\lib\schemas.ts:305:    enabled: z.boolean(),
+apps\admin\app\lib\schemas.ts:361:    disabled: z.number().int().nonnegative(),
+apps\admin\app\lib\actions.ts:140:    const enabled = readString(formData, "enabled") === "true";
+apps\admin\app\lib\actions.ts:141:    return api.setProviderAccountEnabled({ accountId, enabled, reason });
+apps\admin\app\lib\actions.ts:226:    const enabled = readString(formData, "enabled") === "true";
+apps\admin\app\lib\actions.ts:227:    return api.setUserEnabled({ userId: id, enabled, reason });
+apps\admin\app\lib\actions.ts:272:    const enabled = readString(formData, "enabled") === "true";
+apps\admin\app\lib\actions.ts:273:    return api.setFlag({ key, enabled, reason });
+apps\admin\app\lib\fixtures.ts:75:    disabledRegionCount: 0,
+apps\admin\app\lib\fixtures.ts:76:    disabledModelCount: 1,
+apps\admin\app\lib\fixtures.ts:77:    disabledAccountCount: 1,
+apps\admin\app\lib\fixtures.ts:154:    status: "disabled",
+apps\admin\app\lib\fixtures.ts:199:    compatibilityStatus: "passing",
+apps\admin\app\lib\fixtures.ts:213:    compatibilityStatus: "passing",
+apps\admin\app\lib\fixtures.ts:227:    compatibilityStatus: "unknown",
+apps\admin\app\lib\fixtures.ts:241:    compatibilityStatus: "failing",
+apps\admin\app\lib\fixtures.ts:452:    status: "disabled",
+apps\admin\app\lib\fixtures.ts:531:    enabled: true,
+apps\admin\app\lib\fixtures.ts:542:    enabled: true,
+apps\admin\app\lib\fixtures.ts:553:    enabled: true,
+apps\admin\app\lib\fixtures.ts:564:    enabled: true,
+apps\admin\app\lib\fixtures.ts:575:    enabled: false,
+apps\admin\app\lib\fixtures.ts:586:    enabled: true,
+apps\admin\app\lib\fixtures.ts:597:    enabled: false,
+apps\admin\app\lib\fixtures.ts:614:    reason: "Tool-use compatibility suite failing since adapter v0.4.1",
+apps\admin\app\lib\fixtures.ts:658:    reason: "Account disabled for abuse",
+apps\admin\app\lib\fixtures.ts:703:      detail: "KIRO_DIRECT_ENABLED=false — compatibility gate M0 not signed off",
+apps\admin\app\lib\fixtures.ts:707:  providerPool: { healthy: 4, coolingDown: 1, credentialInvalid: 1, disabled: 1 },
+packages\payments\src\activate.ts:188:  // §11's cap and eligibility rules, judged at `now` — delegated, not reimplemented.
+packages\database\test\schema.test.ts:183:  it("refuses to publish a model whose compatibility gate has not passed", () => {
+packages\database\test\schema.test.ts:186:      /models_published_requires_passing CHECK \([\s\S]*?compatibility_status IN \('passing', 'degraded'\)/,
+packages\provider-core\test\scheduler.test.ts:16:    disabledRegions?: string[];
+packages\provider-core\test\scheduler.test.ts:17:    disabledAccounts?: string[];
+packages\provider-core\test\scheduler.test.ts:27:    disabledRegions: new Set(options.disabledRegions ?? []),
+packages\provider-core\test\scheduler.test.ts:28:    disabledAccounts: new Set(options.disabledAccounts ?? []),
+packages\provider-core\test\scheduler.test.ts:93:  it("filters disabled, credential-invalid, region-disabled, and cooling accounts", () => {
+packages\provider-core\test\scheduler.test.ts:94:    const { scheduler, cooldowns } = build({ disabledRegions: ["eu-west-1"] });
+packages\provider-core\test\scheduler.test.ts:97:      account("disabled", { health: { status: "disabled" } }),
+packages\provider-core\test\scheduler.test.ts:110:      disabled: "account_disabled",
+packages\provider-core\test\scheduler.test.ts:112:      "wrong-region": "region_disabled",
+packages\provider-core\test\scheduler.test.ts:118:    const { scheduler } = build({ disabledAccounts: ["acct-02"] });
+packages\provider-kiro\test\transform.test.ts:380:    // This wire shape has no representation for a continuation.
+packages\config\test\env.test.ts:32:  it("defaults the Kiro adapter to disabled so no payment can activate it accidentally", () => {
+packages\provider-kiro\test\stream.test.ts:9: * failing to open the compatibility circuit breaker that §3 relies on to notice
+packages\provider-kiro\test\stream.test.ts:379:    // The tracker still allocated the index, so a continuation is accepted.
+packages\provider-kiro\test\stream.test.ts:391:    // counted toward the compatibility circuit breaker.
+packages\provider-kiro\test\stream.test.ts:763:    // Every parse fault is a compatibility signal per §3, so all eight must
+packages\provider-core\test\retry.test.ts:264:    ["adapter_disabled", false],
+packages\config\src\env.ts:120:  // remain off until the live compatibility and commercial gates pass.
+packages\config\src\env.ts:121:  OPENAI_CODEX_RUNTIME_ENABLED: booleanish(false),
+packages\config\src\env.ts:122:  OPENAI_CODEX_COMMERCIAL_ENABLED: booleanish(false),
+packages\config\src\env.ts:123:  OPENAI_CODEX_TOOL_USE_ENABLED: booleanish(false),
+packages\config\src\env.ts:124:  OPENAI_CODEX_BINARY: z.string().min(1).default("codex"),
+packages\config\src\env.ts:125:  OPENAI_CODEX_EXPECTED_VERSION: z.string().min(1).default(""),
+packages\config\src\env.ts:126:  OPENAI_CODEX_STATE_DIR: z.string().min(1).default("/var/lib/bosanda-codex"),
+packages\config\src\env.ts:127:  OPENAI_CODEX_SOCKET: z.string().min(1).default("/run/bosanda-codex/runtime.sock"),
+packages\config\src\env.ts:128:  OPENAI_CODEX_LOGIN_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(900_000).default(900_000),
+packages\config\src\env.ts:129:  OPENAI_CODEX_DISABLED_MODELS: z
+packages\provider-kiro\test\models.test.ts:8: *    `compatibilityStatus: "unknown"` because §3's compatibility gate has NOT
+packages\provider-kiro\test\models.test.ts:31:  it("ships no published model, because the compatibility gate has not run", () => {
+packages\provider-kiro\test\models.test.ts:37:  it("reports no model as compatibility-passing", () => {
+packages\provider-kiro\test\models.test.ts:39:      expect(model.compatibilityStatus, model.publicId).toBe("unknown");
+packages\provider-kiro\test\models.test.ts:48:        expect(model.compatibilityStatus, `${model.publicId} is published`).toBe("passing");
+packages\provider-core\test\kill-switches.test.ts:21:  disabledRegions: new Set<string>(),
+packages\provider-core\test\kill-switches.test.ts:22:  disabledModels: new Set<string>(),
+packages\provider-core\test\kill-switches.test.ts:23:  disabledAccounts: new Set<string>(),
+packages\provider-core\test\kill-switches.test.ts:37:  it("global switch blocks with adapter_disabled (503)", () => {
+packages\provider-core\test\kill-switches.test.ts:41:    expect(decision.error.code).toBe("adapter_disabled");
+packages\provider-core\test\kill-switches.test.ts:47:    const s = switches({ disabledRegions: new Set(["eu-west-1"]) });
+packages\provider-core\test\kill-switches.test.ts:57:    const s = switches({ disabledRegions: new Set(["eu-west-1"]) });
+packages\provider-core\test\kill-switches.test.ts:64:    const s = switches({ disabledModels: new Set(["kiro-opus-4"]) });
+packages\provider-core\test\kill-switches.test.ts:74:    const s = switches({ disabledAccounts: new Set(["acct-07"]) });
+packages\provider-core\test\kill-switches.test.ts:84:    const s = switches({ disabledAccounts: new Set(["acct-07"]) });
+packages\provider-core\test\kill-switches.test.ts:94:        disabledRegions: new Set(["us-east-1"]),
+packages\provider-core\test\kill-switches.test.ts:95:        disabledModels: new Set(["kiro-sonnet-4"]),
+packages\provider-core\test\kill-switches.test.ts:96:        disabledAccounts: new Set(["acct-01"]),
+packages\provider-core\test\kill-switches.test.ts:106:        disabledRegions: new Set(["us-east-1"]),
+packages\provider-core\test\kill-switches.test.ts:107:        disabledModels: new Set(["kiro-sonnet-4"]),
+packages\provider-core\test\kill-switches.test.ts:108:        disabledAccounts: new Set(["acct-01"]),
+packages\provider-core\test\kill-switches.test.ts:118:        disabledModels: new Set(["kiro-sonnet-4"]),
+packages\provider-core\test\kill-switches.test.ts:119:        disabledAccounts: new Set(["acct-01"]),
+packages\provider-core\test\kill-switches.test.ts:129:      switches({ disabledRegions: new Set(["us-east-1"]) }),
+packages\provider-core\test\kill-switches.test.ts:130:      switches({ disabledModels: new Set(["kiro-sonnet-4"]) }),
+packages\provider-core\test\kill-switches.test.ts:131:      switches({ disabledAccounts: new Set(["acct-01"]) }),
+packages\provider-core\test\kill-switches.test.ts:161:    expect(decision.reason).toContain("tool use disabled");
+packages\provider-core\test\kill-switches.test.ts:185:  it("tool use enabled leaves requests untouched", () => {
+packages\provider-core\test\kill-switches.test.ts:213:    expect([...s.disabledRegions]).toEqual(["eu-west-1", "ap-southeast-1"]);
+packages\provider-core\test\kill-switches.test.ts:214:    expect([...s.disabledModels]).toEqual(["kiro-opus-4"]);
+packages\provider-core\test\kill-switches.test.ts:217:  it("takes disabled accounts from the caller (they live in PostgreSQL, not env)", () => {
+packages\provider-core\test\kill-switches.test.ts:219:    expect([...s.disabledAccounts]).toEqual(["acct-03", "acct-09"]);
+packages\provider-core\test\kill-switches.test.ts:222:  it("defaults to no disabled accounts", () => {
+packages\provider-core\test\kill-switches.test.ts:223:    expect(killSwitchesFromEnv(env()).disabledAccounts.size).toBe(0);
+packages\provider-core\test\kill-switches.test.ts:226:  it("keeps Codex disabled unless both runtime and commercial gates are on", () => {
+packages\provider-core\test\kill-switches.test.ts:229:        OPENAI_CODEX_RUNTIME_ENABLED: true,
+packages\provider-core\test\kill-switches.test.ts:230:        OPENAI_CODEX_COMMERCIAL_ENABLED: false,
+packages\provider-core\test\kill-switches.test.ts:231:        OPENAI_CODEX_TOOL_USE_ENABLED: false,
+packages\provider-core\test\kill-switches.test.ts:232:        OPENAI_CODEX_DISABLED_MODELS: ["bosanda-codex-old"],
+packages\provider-core\test\kill-switches.test.ts:239:    expect([...s.disabledModels]).toEqual(["bosanda-codex-old"]);
+packages\provider-core\test\kill-switches.test.ts:243:describe("isModelPubliclyVisible (§3: hide models when globally disabled)", () => {
+packages\provider-core\test\kill-switches.test.ts:250:  it("hides only the disabled model otherwise", () => {
+packages\provider-core\test\kill-switches.test.ts:251:    const s = switches({ disabledModels: new Set(["kiro-opus-4"]) });
+packages\provider-core\test\kill-switches.test.ts:258:      disabledAccounts: new Set(["acct-01"]),
+packages\provider-core\test\kill-switches.test.ts:259:      disabledRegions: new Set(["us-east-1"]),
+packages\provider-core\test\health.test.ts:234:  it("counts adapter compatibility errors on upstream_incompatible", () => {
+packages\provider-core\test\health.test.ts:239:    // Only the incompatibility increments this counter; the timeout does not.
+packages\provider-core\test\health.test.ts:341:    health.setStatus("a", "disabled");
+packages\provider-core\test\health.test.ts:342:    expect(health.snapshot("a").status).toBe("disabled");
+packages\database\src\repositories\flags.ts:40:export const FLAG_ADAPTER_ENABLED = "kiro.adapter_enabled";
+packages\database\src\repositories\flags.ts:41:export const FLAG_TOOL_USE_ENABLED = "kiro.tool_use_enabled";
+packages\database\src\repositories\flags.ts:42:export const FLAG_DISABLED_REGIONS = "kiro.disabled_regions";
+packages\database\src\repositories\flags.ts:43:export const FLAG_DISABLED_MODELS = "kiro.disabled_models";
+packages\database\src\repositories\flags.ts:74:  disabledRegions: ReadonlySet<string>;
+packages\database\src\repositories\flags.ts:75:  disabledModels: ReadonlySet<string>;
+packages\database\src\repositories\flags.ts:82:  disabledRegions: ReadonlySet<string>;
+packages\database\src\repositories\flags.ts:83:  disabledModels: ReadonlySet<string>;
+packages\database\src\repositories\flags.ts:84:  disabledAccounts: ReadonlySet<string>;
+packages\database\src\repositories\flags.ts:88: * Compose config, runtime flags, and disabled accounts into `KillSwitches`.
+packages\database\src\repositories\flags.ts:93: *   const disabled = await providerAccountsRepository(sql).listDisabledIds("kiro");
+packages\database\src\repositories\flags.ts:94: *   const switches = killSwitchesFrom(killSwitchesFromEnv(env), flags, disabled);
+packages\database\src\repositories\flags.ts:103: *     runtime override may only add to the disabled set. Letting a flag SHRINK it
+packages\database\src\repositories\flags.ts:104: *     would mean a stray flag could re-enable a model an operator disabled at deploy
+packages\database\src\repositories\flags.ts:105: *     time, and during an incident the safe direction is more disabled, not less.
+packages\database\src\repositories\flags.ts:110:  disabledAccounts: Iterable<string> = [],
+packages\database\src\repositories\flags.ts:123:    disabledRegions: union(config.disabledRegions, readStringSet(byKey.get(FLAG_DISABLED_REGIONS))),
+packages\database\src\repositories\flags.ts:124:    disabledModels: union(config.disabledModels, readStringSet(byKey.get(FLAG_DISABLED_MODELS))),
+packages\database\src\repositories\flags.ts:125:    disabledAccounts: new Set(disabledAccounts),
+packages\database\src\repositories\flags.ts:192:     * Note what this means for `killSwitchesFrom`: deleting `kiro.adapter_enabled`
+packages\openai\test\decode.test.ts:483:    // Forward compatibility: an unrecognised key we have no opinion about is not
+packages\database\src\repositories\models.ts:8: * `compatibility_status IN ('passing','degraded')`). This file adds the second
+packages\database\src\repositories\models.ts:71:  compatibilityStatus: CompatibilityStatus;
+packages\database\src\repositories\models.ts:145:     * model whose compatibility gate has not passed, which is where §3's
+packages\database\src\repositories\models.ts:155:          published, compatibility_status, updated_at
+packages\database\src\repositories\models.ts:161:          ${input.published}, ${input.compatibilityStatus}, ${input.at}
+packages\database\src\repositories\models.ts:173:          compatibility_status = EXCLUDED.compatibility_status,
+packages\database\src\repositories\models.ts:184:     * Publishing is guarded on `compatibility_status IN ('passing','degraded')` in
+packages\database\src\repositories\models.ts:199:              AND compatibility_status IN ('passing', 'degraded')
+packages\database\src\repositories\models.ts:213:     * Record a compatibility-gate result (§3 per-model gate).
+packages\database\src\repositories\models.ts:216:     * CHECK forbids `published = TRUE` with `compatibility_status = 'failing'` — two
+packages\database\src\repositories\models.ts:227:        SET compatibility_status = ${status},
+packages\provider-kiro\test\adapter.test.ts:12: *  - ORDERING. §3 requires that a disabled adapter never touches a secret, and
+packages\provider-kiro\test\adapter.test.ts:69: * disabled adapter to fail before decrypting anything, and only a call counter
+packages\provider-kiro\test\adapter.test.ts:197:  it("rejects stream with adapter_disabled and never reads a credential", () => {
+packages\provider-kiro\test\adapter.test.ts:203:      expect.unreachable("expected adapter_disabled");
+packages\provider-kiro\test\adapter.test.ts:205:      expect((error as BosandaError).code).toBe("adapter_disabled");
+packages\provider-kiro\test\adapter.test.ts:225:      expect.unreachable("expected adapter_disabled");
+packages\provider-kiro\test\adapter.test.ts:235:  it("hides every model from listModels while disabled", async () => {
+packages\provider-kiro\test\adapter.test.ts:240:  it("lists the catalog when enabled", async () => {
+packages\provider-kiro\test\adapter.test.ts:252:  it("rejects validateAccount while disabled, without reading a credential", async () => {
+packages\provider-kiro\test\adapter.test.ts:254:    await expect(adapter.validateAccount("acct_1")).rejects.toThrow(/adapter_disabled/);
