@@ -40,7 +40,7 @@ describe("individual switches (§3)", () => {
     if (decision.allowed) throw new Error("unreachable");
     expect(decision.error.code).toBe("adapter_disabled");
     expect(decision.error.status).toBe(503);
-    expect(decision.reason).toContain("KIRO_DIRECT_ENABLED=false");
+    expect(decision.reason).toContain("global kill switch");
   });
 
   it("per-region switch blocks only the matching region", () => {

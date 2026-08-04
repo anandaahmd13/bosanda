@@ -202,7 +202,6 @@ export function providerAccount(overrides: Partial<ProviderAccount> = {}): Provi
     status: "active",
     region: "us-east-1",
     persona: "cli",
-    encryptedCredentials: "envelope",
     encryptionKeyVersion: 1,
     credentialVersion: 0,
     profileArn: null,
@@ -668,6 +667,35 @@ export async function adminHarness(options: AdminHarnessOptions = {}): Promise<A
     models: {
       findByPublicId: async (publicId) =>
         fixtures.models.find((model) => model.publicId === publicId) ?? null,
+      upsert: async (input) => {
+        const value =
+          typeof input.multiplier === "number" ? String(input.multiplier) : input.multiplier;
+        const capabilities =
+          typeof input.capabilities === "object" && input.capabilities !== null
+            ? input.capabilities
+            : {};
+        const updated = {
+          publicId: input.publicId,
+          providerType: input.providerType,
+          upstreamId: input.upstreamId,
+          label: input.label,
+          contextWindow: input.contextWindow,
+          multiplier: value,
+          multiplierNumeric: Number(value),
+          multiplierVersion: input.multiplierVersion,
+          supportsTools: (capabilities as Record<string, unknown>)["supportsTools"] === true,
+          supportsReasoning:
+            (capabilities as Record<string, unknown>)["supportsReasoning"] === true,
+          regions: [...input.regions],
+          published: input.published,
+          compatibilityStatus: input.compatibilityStatus,
+          updatedAt: input.at,
+        } as ModelRecord;
+        const existing = fixtures.models.findIndex((m) => m.publicId === input.publicId);
+        if (existing >= 0) fixtures.models[existing] = updated;
+        else fixtures.models.push(updated);
+        return updated;
+      },
       setMultiplier: async (publicId, multiplier, multiplierVersion, at) => {
         const model = fixtures.models.find((candidate) => candidate.publicId === publicId);
         if (model === undefined) return null;
@@ -703,7 +731,13 @@ export async function adminHarness(options: AdminHarnessOptions = {}): Promise<A
     providerAccounts: {
       findById: async (id) => fixtures.accounts.find((account) => account.id === id) ?? null,
       insert: async (input) => {
-        const account = { ...providerAccount(), ...input, credentialVersion: 0 } as ProviderAccount;
+        const account = {
+          ...providerAccount(),
+          ...input,
+          // Managed Codex rows carry null credentials; do not reintroduce a fake envelope.
+          encryptionKeyVersion: input.encryptionKeyVersion ?? null,
+          credentialVersion: 0,
+        } as ProviderAccount;
         fixtures.accounts.push(account);
         return account;
       },
@@ -888,7 +922,8 @@ export async function adminHarness(options: AdminHarnessOptions = {}): Promise<A
     },
 
     providerAccounts: {
-      listByType: async () => fixtures.accounts,
+      listByType: async (providerType) =>
+        fixtures.accounts.filter((account) => account.providerType === providerType),
       findById: async (id) => fixtures.accounts.find((account) => account.id === id) ?? null,
       errorCountsSince: async () => [],
       recentHealthEvents: async () => [],
@@ -1028,6 +1063,16 @@ export async function adminHarness(options: AdminHarnessOptions = {}): Promise<A
           internalDetail: "provider refused the credential",
         });
       }
+    },
+
+    codex: {
+      isRuntimeEnabled: () => false,
+      accountRead: async () => ({ authenticated: false }),
+      loginStart: async () => ({ state: "idle" }),
+      loginStatus: async () => ({ state: "idle" }),
+      loginCancel: async () => ({ state: "cancelled" }),
+      logout: async () => undefined,
+      listModels: async () => [],
     },
 
     transact: async (fn) => {

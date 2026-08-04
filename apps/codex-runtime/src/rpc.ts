@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
+import { EventEmitter } from "node:events";
 
 const MAX_LINE_BYTES = 1_000_000;
 
@@ -19,7 +20,16 @@ export type RpcClientOptions = {
   env?: Record<string, string>;
 };
 
-export class CodexRpcClient {
+export type RpcNotification = {
+  method: string;
+  params?: Record<string, unknown>;
+};
+
+/**
+ * Thin stdio client for `codex app-server --listen stdio://`.
+ * Emits `notification` for server-pushed events (turns, login progress).
+ */
+export class CodexRpcClient extends EventEmitter {
   private readonly child: ChildProcessWithoutNullStreams;
   private nextId = 1;
   private readonly pending = new Map<
@@ -29,11 +39,16 @@ export class CodexRpcClient {
   private closed = false;
 
   private constructor(child: ChildProcessWithoutNullStreams) {
+    super();
     this.child = child;
     const lines = createInterface({ input: child.stdout });
     lines.on("line", (line) => this.onLine(line));
     child.on("exit", () => this.close(new Error("Codex App Server exited")));
     child.stderr.on("data", () => undefined);
+  }
+
+  get isClosed(): boolean {
+    return this.closed;
   }
 
   static async start(options: RpcClientOptions): Promise<CodexRpcClient> {
@@ -117,6 +132,7 @@ export class CodexRpcClient {
     for (const pending of this.pending.values()) pending.reject(error);
     this.pending.clear();
     this.child.kill();
+    this.emit("close", error);
   }
 
   private onLine(line: string): void {
@@ -127,6 +143,14 @@ export class CodexRpcClient {
       message = JSON.parse(line) as RpcResponse;
     } catch {
       return this.close(new Error("Malformed Codex RPC response"));
+    }
+    if (typeof message.method === "string" && typeof message.id !== "number") {
+      const notification: RpcNotification = {
+        method: message.method,
+        params: message.params,
+      };
+      this.emit("notification", notification);
+      return;
     }
     if (typeof message.id !== "number") return;
     const pending = this.pending.get(message.id);

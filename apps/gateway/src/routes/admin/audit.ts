@@ -45,6 +45,10 @@ export const ADMIN_ACTIONS = {
   providerCredentialRotated: "provider_account.credential_rotated",
   providerAccountEnabled: "provider_account.enabled_changed",
   providerAccountValidated: "provider_account.validated",
+  providerCodexLoginStarted: "provider_account.codex_login_started",
+  providerCodexLoginCancelled: "provider_account.codex_login_cancelled",
+  providerCodexLoggedOut: "provider_account.codex_logged_out",
+  providerCodexModelsSynced: "provider_account.codex_models_synced",
 
   modelMultiplierChanged: "model.multiplier_changed",
   modelPublishedChanged: "model.published_changed",

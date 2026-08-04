@@ -29,7 +29,12 @@ import { createClientFromEnv } from "@bosanda/database";
 import { buildApp } from "./app.js";
 import { createAdminDependencies } from "./admin-dependencies.js";
 import { createCustomerDependencies } from "./customer-dependencies.js";
-import { createDependencies, PROVIDER_TYPE } from "./dependencies.js";
+import {
+  CODEX_PROVIDER_TYPE,
+  createDependencies,
+  PROVIDER_TYPE,
+  type GatewayProviderType,
+} from "./dependencies.js";
 import { createReadinessState } from "./routes/health.js";
 
 /**
@@ -82,7 +87,10 @@ async function main(): Promise<void> {
     sql,
     logger,
     validateAccount: async (accountId) => {
-      await deps.adapters.get(PROVIDER_TYPE).validateAccount(accountId);
+      const account = await deps.providerAccounts.findById(accountId);
+      const providerType: GatewayProviderType =
+        account?.providerType === CODEX_PROVIDER_TYPE ? CODEX_PROVIDER_TYPE : PROVIDER_TYPE;
+      await deps.adapters.get(providerType).validateAccount(accountId);
     },
   });
 

@@ -42,6 +42,11 @@ export const FLAG_TOOL_USE_ENABLED = "kiro.tool_use_enabled";
 export const FLAG_DISABLED_REGIONS = "kiro.disabled_regions";
 export const FLAG_DISABLED_MODELS = "kiro.disabled_models";
 
+/** OpenAI Codex runtime overrides — cannot re-enable env-off commercial/runtime gates. */
+export const FLAG_CODEX_ADAPTER_ENABLED = "openai_codex.adapter_enabled";
+export const FLAG_CODEX_TOOL_USE_ENABLED = "openai_codex.tool_use_enabled";
+export const FLAG_CODEX_DISABLED_MODELS = "openai_codex.disabled_models";
+
 /**
  * A boolean out of a JSONB value, or `fallback`.
  *
@@ -104,10 +109,13 @@ export type ResolvedKillSwitches = {
  *     would mean a stray flag could re-enable a model an operator disabled at deploy
  *     time, and during an incident the safe direction is more disabled, not less.
  */
+export type KillSwitchProvider = "kiro" | "openai_codex";
+
 export function killSwitchesFrom(
   config: KillSwitchConfig,
   flags: readonly FeatureFlag[],
   disabledAccounts: Iterable<string> = [],
+  provider: KillSwitchProvider = "kiro",
 ): ResolvedKillSwitches {
   const byKey = new Map(flags.map((flag) => [flag.key, flag.value]));
 
@@ -116,6 +124,27 @@ export function killSwitchesFrom(
     for (const item of extra) merged.add(item);
     return merged;
   };
+
+  if (provider === "openai_codex") {
+    // Booleans: flag may only further disable. Env commercial+runtime already baked
+    // into config.adapterEnabled; an absent flag leaves that alone, an explicit
+    // false turns the adapter off, an explicit true cannot resurrect env-off.
+    const flagAdapter = byKey.get(FLAG_CODEX_ADAPTER_ENABLED);
+    const flagTools = byKey.get(FLAG_CODEX_TOOL_USE_ENABLED);
+    return {
+      adapterEnabled:
+        config.adapterEnabled &&
+        (flagAdapter === undefined ? true : readBoolean(flagAdapter, true)),
+      toolUseEnabled:
+        config.toolUseEnabled && (flagTools === undefined ? true : readBoolean(flagTools, true)),
+      disabledRegions: config.disabledRegions,
+      disabledModels: union(
+        config.disabledModels,
+        readStringSet(byKey.get(FLAG_CODEX_DISABLED_MODELS)),
+      ),
+      disabledAccounts: new Set(disabledAccounts),
+    };
+  }
 
   return {
     adapterEnabled: readBoolean(byKey.get(FLAG_ADAPTER_ENABLED), config.adapterEnabled),

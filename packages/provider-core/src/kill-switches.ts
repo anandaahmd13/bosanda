@@ -110,10 +110,11 @@ export function evaluateKillSwitches(
   query: KillSwitchQuery,
 ): KillSwitchDecision {
   // Tool-use state is computed first because it applies to every outcome, but it
-  // never blocks on its own.
+  // never blocks on its own. Reasons stay provider-neutral so Codex and Kiro share
+  // one evaluator without hardcoding env var names from a single provider.
   const stripTools = !switches.toolUseEnabled;
   const toolsReason = stripTools
-    ? "tool use disabled by KIRO_TOOL_USE_ENABLED=false; tools stripped from request"
+    ? "tool use disabled by kill switch; tools stripped from request"
     : undefined;
 
   const blocked = (reason: string): KillSwitchDecision => ({
@@ -125,17 +126,17 @@ export function evaluateKillSwitches(
 
   // 1. Global (broadest).
   if (!switches.adapterEnabled) {
-    return blocked("global kill switch: KIRO_DIRECT_ENABLED=false");
+    return blocked("global kill switch: adapter disabled");
   }
 
   // 2. Region.
   if (query.region !== undefined && switches.disabledRegions.has(query.region)) {
-    return blocked(`region "${query.region}" disabled by KIRO_DISABLED_REGIONS`);
+    return blocked(`region "${query.region}" disabled by kill switch`);
   }
 
   // 3. Model.
   if (switches.disabledModels.has(query.model)) {
-    return blocked(`model "${query.model}" disabled by KIRO_DISABLED_MODELS`);
+    return blocked(`model "${query.model}" disabled by kill switch`);
   }
 
   // 4. Account (narrowest).

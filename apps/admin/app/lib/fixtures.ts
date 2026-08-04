@@ -71,6 +71,8 @@ export const fixtureOverview: Overview = {
   killSwitchSummary: {
     adapterEnabled: true,
     kiroDirectEnabled: false,
+    openaiCodexRuntimeEnabled: false,
+    openaiCodexCommercialEnabled: false,
     toolUseEnabled: true,
     disabledRegionCount: 0,
     disabledModelCount: 1,

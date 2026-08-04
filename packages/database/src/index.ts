@@ -242,6 +242,9 @@ export {
 
 export {
   FLAG_ADAPTER_ENABLED,
+  FLAG_CODEX_ADAPTER_ENABLED,
+  FLAG_CODEX_DISABLED_MODELS,
+  FLAG_CODEX_TOOL_USE_ENABLED,
   FLAG_DISABLED_MODELS,
   FLAG_DISABLED_REGIONS,
   FLAG_TOOL_USE_ENABLED,
@@ -251,6 +254,7 @@ export {
   readStringSet,
   type FlagsRepository,
   type KillSwitchConfig,
+  type KillSwitchProvider,
   type ResolvedKillSwitches,
 } from "./repositories/flags.js";
 

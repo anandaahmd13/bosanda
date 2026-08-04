@@ -75,6 +75,8 @@ export const overview = z.object({
   killSwitchSummary: z.object({
     adapterEnabled: z.boolean(),
     kiroDirectEnabled: z.boolean(),
+    openaiCodexRuntimeEnabled: z.boolean(),
+    openaiCodexCommercialEnabled: z.boolean(),
     toolUseEnabled: z.boolean(),
     disabledRegionCount: z.number().int().nonnegative(),
     disabledModelCount: z.number().int().nonnegative(),
@@ -315,6 +317,8 @@ export const flagList = z.object({
   flags: z.array(featureFlag),
   /** Env-level KIRO_DIRECT_ENABLED. Read-only here: it is set in admin.env. */
   kiroDirectEnabled: z.boolean(),
+  openaiCodexRuntimeEnabled: z.boolean(),
+  openaiCodexCommercialEnabled: z.boolean(),
 });
 export type FlagList = z.infer<typeof flagList>;
 

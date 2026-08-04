@@ -60,6 +60,7 @@ import {
   type SchedulableAccount,
 } from "@bosanda/provider-core";
 import { CredentialManager, KiroDirectAdapter } from "@bosanda/provider-kiro";
+import { CodexAdapter, createCodexRuntimeClient } from "@bosanda/provider-codex";
 import { systemClock, type Clock } from "@bosanda/shared";
 import { KeyLimiter } from "./limits.js";
 import {
@@ -86,7 +87,10 @@ export type GatewayProviderType = ProviderType;
 export type GatewayRepositories = {
   apiKeys: Pick<ApiKeysRepository, "findByLookupDigest" | "touchLastUsed">;
   models: Pick<ModelsRepository, "listPublished" | "findByPublicId">;
-  providerAccounts: Pick<ProviderAccountsRepository, "listEligibleHealth" | "listDisabledIds">;
+  providerAccounts: Pick<
+    ProviderAccountsRepository,
+    "listEligibleHealth" | "listDisabledIds" | "findById"
+  >;
 };
 
 export function narrowProviderType(providerType: string): ProviderType {
@@ -260,9 +264,21 @@ export function createDependencies(options: CreateDependenciesOptions): GatewayD
     },
   });
 
-  // The Codex runtime is injected by the dedicated runtime service. Until it is
-  // wired and both gates pass, register no live adapter; staged models remain unavailable.
-  const adapters: AdapterRegistry = createAdapterRegistry([adapter]);
+  // Codex speaks App Server over the dedicated runtime socket. Registration is
+  // unconditional so admin validate/login can resolve the adapter type; the
+  // adapter itself still rejects until runtime+commercial gates are both true,
+  // and models stay unpublished until the compatibility gate is signed off.
+  const codexRuntime = createCodexRuntimeClient({
+    socketPath: env.OPENAI_CODEX_SOCKET,
+    enabled: () => env.OPENAI_CODEX_RUNTIME_ENABLED,
+  });
+  const codexAdapter = new CodexAdapter({
+    runtime: codexRuntime,
+    enabled: () => env.OPENAI_CODEX_RUNTIME_ENABLED,
+    commercialEnabled: () => env.OPENAI_CODEX_COMMERCIAL_ENABLED,
+    toolUseEnabled: () => env.OPENAI_CODEX_TOOL_USE_ENABLED,
+  });
+  const adapters: AdapterRegistry = createAdapterRegistry([adapter, codexAdapter]);
 
   return {
     env,
@@ -303,6 +319,7 @@ export function createDependencies(options: CreateDependenciesOptions): GatewayD
         },
         flags,
         disabledAccounts,
+        selectedProvider === CODEX_PROVIDER_TYPE ? "openai_codex" : "kiro",
       );
     },
 

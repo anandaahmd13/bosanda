@@ -91,6 +91,8 @@ importers:
 
   apps/admin: {}
 
+  apps/codex-runtime: {}
+
   apps/gateway:
     dependencies:
       '@bosanda/anthropic':
@@ -123,15 +125,15 @@ importers:
       '@bosanda/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@bosanda/provider-codex':
+        specifier: workspace:*
+        version: link:../../packages/provider-codex
       '@bosanda/provider-core':
         specifier: workspace:*
         version: link:../../packages/provider-core
       '@bosanda/provider-kiro':
         specifier: workspace:*
         version: link:../../packages/provider-kiro
-      '@bosanda/provider-codex':
-        specifier: workspace:*
-        version: link:../../packages/provider-codex
       '@bosanda/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -343,6 +345,8 @@ importers:
         version: 4.4.3
 
   packages/shared: {}
+
+  spikes/codex-app-server: {}
 
   spikes/kiro-direct:
     dependencies:

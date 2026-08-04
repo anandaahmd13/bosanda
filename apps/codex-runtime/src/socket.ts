@@ -1,7 +1,10 @@
 import { createServer, type Socket } from "node:net";
-import { mkdir } from "node:fs/promises";
+import { mkdir, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
-import { CodexRpcClient, type RpcClientOptions } from "./rpc.js";
+import type { RpcClientOptions } from "./rpc.js";
+import { SessionManager } from "./sessions.js";
+import { handleOp } from "./ops.js";
+import type { RuntimeRequest, RuntimeResponse } from "./protocol.js";
 
 const MAX_REQUEST_BYTES = 1_000_000;
 
@@ -11,7 +14,20 @@ export async function startRuntimeServer(
   options: RuntimeServerOptions,
 ): Promise<{ close(): Promise<void> }> {
   await mkdir(dirname(options.socketPath), { recursive: true, mode: 0o750 });
-  const server = createServer((socket) => handleConnection(socket, options));
+  try {
+    await unlink(options.socketPath);
+  } catch {
+    // absent is fine
+  }
+
+  const sessions = new SessionManager(options);
+  const baseOptions = {
+    binary: options.binary,
+    expectedVersion: options.expectedVersion,
+    stateDir: options.stateDir,
+  };
+
+  const server = createServer((socket) => handleConnection(socket, sessions, baseOptions));
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(options.socketPath, () => {
@@ -19,43 +35,63 @@ export async function startRuntimeServer(
       resolve();
     });
   });
+
   return {
-    close: async () =>
+    close: async () => {
+      await sessions.closeAll();
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
-      ),
+      );
+    },
   };
 }
 
-function handleConnection(socket: Socket, options: RuntimeServerOptions): void {
+function handleConnection(
+  socket: Socket,
+  sessions: SessionManager,
+  baseOptions: { binary: string; expectedVersion?: string; stateDir: string },
+): void {
   let buffer = "";
+  const write = (response: RuntimeResponse): void => {
+    if (socket.destroyed) return;
+    socket.write(`${JSON.stringify(response)}\n`);
+  };
+
   socket.on("data", (chunk) => {
     buffer += chunk.toString("utf8");
-    if (Buffer.byteLength(buffer, "utf8") > MAX_REQUEST_BYTES) return socket.destroy();
+    if (Buffer.byteLength(buffer, "utf8") > MAX_REQUEST_BYTES) {
+      socket.destroy();
+      return;
+    }
     let newline: number;
     while ((newline = buffer.indexOf("\n")) >= 0) {
       const line = buffer.slice(0, newline);
       buffer = buffer.slice(newline + 1);
-      void handleLine(socket, line, options);
+      void dispatch(line, sessions, baseOptions, write);
     }
   });
 }
 
-async function handleLine(
-  socket: Socket,
+async function dispatch(
   line: string,
-  options: RuntimeServerOptions,
+  sessions: SessionManager,
+  baseOptions: { binary: string; expectedVersion?: string; stateDir: string },
+  write: (response: RuntimeResponse) => void,
 ): Promise<void> {
+  let request: RuntimeRequest;
   try {
-    const request = JSON.parse(line) as { op?: string };
-    if (request.op !== "health") {
-      socket.write(JSON.stringify({ ok: false, error: "operation_not_available" }) + "\n");
-      return;
-    }
-    const client = await CodexRpcClient.start(options);
-    client.close();
-    socket.write(JSON.stringify({ ok: true, ready: true }) + "\n");
+    request = JSON.parse(line) as RuntimeRequest;
   } catch {
-    socket.write(JSON.stringify({ ok: false, error: "runtime_unavailable" }) + "\n");
+    write({ ok: false, error: "malformed_request" });
+    return;
   }
+  if (typeof request.op !== "string" || request.op.length === 0) {
+    write({
+      ...(request.id === undefined ? {} : { id: request.id }),
+      ok: false,
+      error: "operation_not_available",
+    });
+    return;
+  }
+  await handleOp(request, { sessions, baseOptions, write });
 }

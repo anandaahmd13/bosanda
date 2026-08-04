@@ -47,6 +47,7 @@ import {
 } from "@bosanda/database";
 import { createLogger, type Logger } from "@bosanda/observability";
 import { killSwitchesFromEnv } from "@bosanda/provider-core";
+import { createCodexRuntimeClient, type CodexRuntime } from "@bosanda/provider-codex";
 import { systemClock, type Clock } from "@bosanda/shared";
 import { BosandaError } from "@bosanda/protocol";
 import { sealCredentials } from "@bosanda/provider-kiro";
@@ -90,6 +91,8 @@ export type CreateAdminDependenciesOptions = {
    * admin-only process has none and reports zero — see `AdminDeps.activeStreams`.
    */
   activeStreams?: () => number;
+  /** Optional shared Codex runtime (same socket client as the metered surface). */
+  codexRuntime?: CodexRuntime;
 };
 
 export function createAdminDependencies(options: CreateAdminDependenciesOptions): AdminDeps {
@@ -97,6 +100,12 @@ export function createAdminDependencies(options: CreateAdminDependenciesOptions)
   const clock = options.clock ?? systemClock;
   const logger = options.logger ?? createLogger({ service: "admin", level: env.LOG_LEVEL });
   const keyring = options.keyring ?? keyringFromEnv(env);
+  const codexRuntime =
+    options.codexRuntime ??
+    createCodexRuntimeClient({
+      socketPath: env.OPENAI_CODEX_SOCKET,
+      enabled: () => env.OPENAI_CODEX_RUNTIME_ENABLED,
+    });
 
   return {
     env,
@@ -116,6 +125,7 @@ export function createAdminDependencies(options: CreateAdminDependenciesOptions)
         },
         flags,
         baseline.disabledAccounts,
+        "kiro",
       );
     },
 
@@ -165,6 +175,32 @@ export function createAdminDependencies(options: CreateAdminDependenciesOptions)
             "credential validation is not wired: createAdminDependencies was built without validateAccount",
         });
       }),
+
+    codex: {
+      isRuntimeEnabled: () => env.OPENAI_CODEX_RUNTIME_ENABLED,
+      accountRead: (accountId) => codexRuntime.accountRead(accountId),
+      loginStart: async (accountId) => {
+        const status = await codexRuntime.loginStart(accountId);
+        return {
+          state: status.state,
+          ...(status.authUrl === undefined ? {} : { authUrl: status.authUrl }),
+        };
+      },
+      loginStatus: async (accountId) => {
+        const status = await codexRuntime.loginStatus(accountId);
+        return {
+          state: status.state,
+          ...(status.authUrl === undefined ? {} : { authUrl: status.authUrl }),
+          ...(status.message === undefined ? {} : { message: status.message }),
+        };
+      },
+      loginCancel: async (accountId) => {
+        const status = await codexRuntime.loginCancel(accountId);
+        return { state: status.state };
+      },
+      logout: (accountId) => codexRuntime.logout(accountId),
+      listModels: (accountId) => codexRuntime.modelList(accountId),
+    },
 
     /**
      * Seals an already-parsed credential.

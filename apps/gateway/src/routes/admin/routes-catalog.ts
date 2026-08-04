@@ -36,6 +36,9 @@ import type { FastifyInstance } from "fastify";
 import { BosandaError } from "@bosanda/protocol";
 import {
   FLAG_ADAPTER_ENABLED,
+  FLAG_CODEX_ADAPTER_ENABLED,
+  FLAG_CODEX_DISABLED_MODELS,
+  FLAG_CODEX_TOOL_USE_ENABLED,
   FLAG_DISABLED_MODELS,
   FLAG_DISABLED_REGIONS,
   FLAG_TOOL_USE_ENABLED,
@@ -100,6 +103,32 @@ const FLAG_CATALOGUE = [
     label: "Disabled models",
     blastRadius:
       "Read-only here. Listed models are hidden and rejected; edit the list in the environment.",
+    writable: false,
+  },
+  {
+    key: FLAG_CODEX_ADAPTER_ENABLED,
+    scope: "global" as const,
+    target: null,
+    label: "Codex adapter",
+    blastRadius:
+      "Turning this off stops Codex routing. Cannot re-enable if OPENAI_CODEX_RUNTIME_ENABLED or COMMERCIAL is false.",
+    writable: true,
+  },
+  {
+    key: FLAG_CODEX_TOOL_USE_ENABLED,
+    scope: "tool_use" as const,
+    target: null,
+    label: "Codex tool use",
+    blastRadius: "Turning this off rejects Codex requests that carry tools.",
+    writable: true,
+  },
+  {
+    key: FLAG_CODEX_DISABLED_MODELS,
+    scope: "model" as const,
+    target: null,
+    label: "Codex disabled models",
+    blastRadius:
+      "Read-only here. Listed Codex models are hidden and rejected; edit OPENAI_CODEX_DISABLED_MODELS.",
     writable: false,
   },
 ] as const;
@@ -328,6 +357,14 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: AdminDeps): vo
           return switches.disabledRegions.size === 0;
         case FLAG_DISABLED_MODELS:
           return switches.disabledModels.size === 0;
+        case FLAG_CODEX_ADAPTER_ENABLED:
+          // Env commercial+runtime already gate customer traffic; the flag only
+          // further disables. Surface env baseline so the console is honest.
+          return deps.env.OPENAI_CODEX_RUNTIME_ENABLED && deps.env.OPENAI_CODEX_COMMERCIAL_ENABLED;
+        case FLAG_CODEX_TOOL_USE_ENABLED:
+          return deps.env.OPENAI_CODEX_TOOL_USE_ENABLED;
+        case FLAG_CODEX_DISABLED_MODELS:
+          return deps.env.OPENAI_CODEX_DISABLED_MODELS.length === 0;
         default:
           return false;
       }
@@ -352,6 +389,8 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: AdminDeps): vo
        * that `KIRO_DIRECT_ENABLED=false` cannot be overridden by a database write.
        */
       kiroDirectEnabled: deps.env.KIRO_DIRECT_ENABLED,
+      openaiCodexRuntimeEnabled: deps.env.OPENAI_CODEX_RUNTIME_ENABLED,
+      openaiCodexCommercialEnabled: deps.env.OPENAI_CODEX_COMMERCIAL_ENABLED,
     });
   });
 
@@ -414,7 +453,15 @@ export function registerCatalogRoutes(app: FastifyInstance, deps: AdminDeps): vo
     // Re-read so the message reflects what the gateway will DO, not what was written.
     const switches = await deps.killSwitches();
     const nowAllowed =
-      key === FLAG_ADAPTER_ENABLED ? switches.adapterEnabled : switches.toolUseEnabled;
+      key === FLAG_ADAPTER_ENABLED || key === FLAG_CODEX_ADAPTER_ENABLED
+        ? key === FLAG_CODEX_ADAPTER_ENABLED
+          ? deps.env.OPENAI_CODEX_RUNTIME_ENABLED &&
+            deps.env.OPENAI_CODEX_COMMERCIAL_ENABLED &&
+            enabled
+          : switches.adapterEnabled
+        : key === FLAG_CODEX_TOOL_USE_ENABLED
+          ? deps.env.OPENAI_CODEX_TOOL_USE_ENABLED && enabled
+          : switches.toolUseEnabled;
 
     request.bosandaLog.warn({ flag: key, enabled }, "admin changed a kill switch");
 

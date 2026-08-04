@@ -647,6 +647,8 @@ export async function listFlags(): Promise<FlagList> {
     return flagList.parse({
       flags: fixtureFlags,
       kiroDirectEnabled: fixtureOverview.killSwitchSummary.kiroDirectEnabled,
+      openaiCodexRuntimeEnabled: fixtureOverview.killSwitchSummary.openaiCodexRuntimeEnabled,
+      openaiCodexCommercialEnabled: fixtureOverview.killSwitchSummary.openaiCodexCommercialEnabled,
     });
   }
   return request("/admin/v1/flags", flagList);

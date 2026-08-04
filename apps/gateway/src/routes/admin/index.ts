@@ -22,6 +22,7 @@ import type { AdminDeps } from "./deps.js";
 import { registerAccountRoutes } from "./routes-accounts.js";
 import { registerCatalogRoutes } from "./routes-catalog.js";
 import { registerOrderRoutes } from "./routes-orders.js";
+import { registerCodexProviderRoutes } from "./routes-codex.js";
 import { registerProviderRoutes } from "./routes-providers.js";
 import { registerSessionRoutes } from "./routes-session.js";
 import { registerStatusRoutes } from "./routes-status.js";
@@ -49,6 +50,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDeps): void
   registerSessionRoutes(app, deps);
   registerStatusRoutes(app, deps);
   registerProviderRoutes(app, deps);
+  registerCodexProviderRoutes(app, deps);
   registerCatalogRoutes(app, deps);
   registerOrderRoutes(app, deps);
   registerAccountRoutes(app, deps);

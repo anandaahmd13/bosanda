@@ -216,6 +216,9 @@ describe("GET /admin/v1/flags", () => {
       "kiro.tool_use_enabled",
       "kiro.disabled_regions",
       "kiro.disabled_models",
+      "openai_codex.adapter_enabled",
+      "openai_codex.tool_use_enabled",
+      "openai_codex.disabled_models",
     ]);
     for (const flag of flags) {
       expect(typeof flag["blastRadius"]).toBe("string");

@@ -244,7 +244,10 @@ export type AdminTx = {
     PackagesRepository,
     "findById" | "upsert" | "setActive" | "readStock" | "lockStock" | "setStock"
   >;
-  readonly models: Pick<ModelsRepository, "findByPublicId" | "setMultiplier" | "setPublished">;
+  readonly models: Pick<
+    ModelsRepository,
+    "findByPublicId" | "setMultiplier" | "setPublished" | "upsert"
+  >;
   readonly flags: Pick<FlagsRepository, "upsert" | "findByKey">;
   readonly providerAccounts: Pick<
     ProviderAccountsRepository,
@@ -323,6 +326,31 @@ export type AdminDeps = {
    * Rejects with a `BosandaError` when the provider refuses the credential.
    */
   validateAccount(accountId: string): Promise<void>;
+
+  /**
+   * Codex App Server admin ports. Credentials stay in the runtime state dir;
+   * these methods never return token material.
+   */
+  readonly codex: {
+    isRuntimeEnabled(): boolean;
+    accountRead(accountId: string): Promise<{
+      authenticated: boolean;
+      email?: string;
+      planType?: string;
+    }>;
+    loginStart(accountId: string): Promise<{
+      state: string;
+      authUrl?: string;
+    }>;
+    loginStatus(accountId: string): Promise<{
+      state: string;
+      authUrl?: string;
+      message?: string;
+    }>;
+    loginCancel(accountId: string): Promise<{ state: string }>;
+    logout(accountId: string): Promise<void>;
+    listModels(accountId: string): Promise<readonly Record<string, unknown>[]>;
+  };
 
   /** Runs `fn` in one transaction. The only write path. */
   transact<T>(fn: (tx: AdminTx) => Promise<T>): Promise<T>;

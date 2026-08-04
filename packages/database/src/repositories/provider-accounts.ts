@@ -250,7 +250,8 @@ export function providerAccountsRepository(sql: Executor) {
         WHERE id = ${accountId}
       `;
       const row = firstRow(rows);
-      if (row === null || row.encrypted_credentials === null || row.encryption_key_version === null) return null;
+      if (row === null || row.encrypted_credentials === null || row.encryption_key_version === null)
+        return null;
       return {
         accountId: row.id,
         encryptedCredentials: row.encrypted_credentials,

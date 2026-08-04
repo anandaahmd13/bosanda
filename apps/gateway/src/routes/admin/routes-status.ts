@@ -99,6 +99,8 @@ export function registerStatusRoutes(app: FastifyInstance, deps: AdminDeps): voi
         adapterEnabled: switches.adapterEnabled,
         // Env-only; `KillSwitches` does not carry it. §3 keeps it false until M0 passes.
         kiroDirectEnabled: deps.env.KIRO_DIRECT_ENABLED,
+        openaiCodexRuntimeEnabled: deps.env.OPENAI_CODEX_RUNTIME_ENABLED,
+        openaiCodexCommercialEnabled: deps.env.OPENAI_CODEX_COMMERCIAL_ENABLED,
         toolUseEnabled: switches.toolUseEnabled,
         /**
          * Counts, not lists.
@@ -162,6 +164,18 @@ export function registerStatusRoutes(app: FastifyInstance, deps: AdminDeps): voi
         detail: switches.adapterEnabled
           ? "Enabled."
           : "Disabled by kill switch. No completions are being served.",
+        checkedAt: iso(checkedAt),
+      },
+      {
+        name: "codex adapter",
+        state:
+          deps.env.OPENAI_CODEX_RUNTIME_ENABLED && deps.env.OPENAI_CODEX_COMMERCIAL_ENABLED
+            ? ("healthy" as const)
+            : ("down" as const),
+        detail:
+          deps.env.OPENAI_CODEX_RUNTIME_ENABLED && deps.env.OPENAI_CODEX_COMMERCIAL_ENABLED
+            ? "Runtime and commercial gates enabled."
+            : "Disabled by default until compatibility and commercial gates pass.",
         checkedAt: iso(checkedAt),
       },
       {

@@ -82,6 +82,15 @@ export function testEnv(overrides: Partial<Env> = {}): Env {
     KIRO_TOOL_USE_ENABLED: true,
     KIRO_DISABLED_REGIONS: [],
     KIRO_DISABLED_MODELS: [],
+    OPENAI_CODEX_RUNTIME_ENABLED: false,
+    OPENAI_CODEX_COMMERCIAL_ENABLED: false,
+    OPENAI_CODEX_TOOL_USE_ENABLED: false,
+    OPENAI_CODEX_BINARY: "codex",
+    OPENAI_CODEX_EXPECTED_VERSION: "",
+    OPENAI_CODEX_STATE_DIR: "/tmp/bosanda-codex-test",
+    OPENAI_CODEX_SOCKET: "/tmp/bosanda-codex-test.sock",
+    OPENAI_CODEX_LOGIN_TIMEOUT_MS: 900_000,
+    OPENAI_CODEX_DISABLED_MODELS: [],
     ...overrides,
   } as Env;
 }
@@ -375,6 +384,26 @@ export function harness(options: HarnessOptions = {}): Harness {
     providerAccounts: {
       listEligibleHealth: async () => accounts,
       listDisabledIds: async () => [],
+      findById: async (id: string) => {
+        const row = accounts.find((account) => account.accountId === id);
+        if (row === undefined) return null;
+        return {
+          id: row.accountId,
+          providerType: "kiro",
+          label: row.accountId,
+          status: row.status === "credential_invalid" ? "invalid" : row.status,
+          region: row.region,
+          persona: row.persona,
+          encryptedCredentials: "envelope",
+          encryptionKeyVersion: 1,
+          credentialVersion: 0,
+          profileArn: null,
+          cooldownUntil: row.cooldownUntil,
+          lastValidatedAt: row.lastValidatedAt,
+          createdAt: NOW,
+          updatedAt: NOW,
+        } as never;
+      },
     },
 
     transact: async (fn) => {
